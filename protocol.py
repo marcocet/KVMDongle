@@ -32,6 +32,9 @@ LIST_ISOS = 0x10
 MOUNT_ISO = 0x11
 EJECT_ISO = 0x12
 PING = 0x13
+AP_ENABLE = 0x14
+AP_DISABLE = 0x15
+AP_STATUS_QUERY = 0x16
 
 # Pi -> Laptop
 ACK = 0x80
@@ -40,6 +43,7 @@ ISO_LIST = 0x82
 ISO_MOUNTED = 0x83
 ISO_EJECTED = 0x84
 PONG = 0x85
+AP_STATUS = 0x86
 
 # Matches USB HID usage-page-0x07 button bit positions used in the
 # MOUSE_DOWN/MOUSE_UP payload byte.
@@ -171,6 +175,26 @@ def decode_mount_iso(payload):
 
 def encode_eject_iso():
     return encode(EJECT_ISO)
+
+
+def encode_ap_enable():
+    return encode(AP_ENABLE)
+
+
+def encode_ap_disable():
+    return encode(AP_DISABLE)
+
+
+def encode_ap_status_query():
+    return encode(AP_STATUS_QUERY)
+
+
+def encode_ap_status(enabled):
+    return encode(AP_STATUS, bytes([1 if enabled else 0]))
+
+
+def decode_ap_status(payload):
+    return bool(payload[0])
 
 
 def encode_ping():

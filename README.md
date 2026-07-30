@@ -77,6 +77,16 @@ for reference -- its UI is what `client.py` is modeled on.
 - Copies `protocol.py`, `pi/daemon.py`, and the gadget scripts to
   `/opt/kvmdongle/`, and enables the two systemd services
   (`kvmdongle-gadget`, `kvmdongle-daemon`).
+- Reduces routine SD-card writes: remounts root `noatime` on every boot,
+  makes the systemd journal volatile (RAM-only, capped at 20MB, lost on
+  reboot), and disables swap if present. This is a lightweight measure,
+  not a read-only root -- it doesn't protect against corruption from a
+  write that's genuinely in progress when power is lost, just cuts down
+  how often that risk window opens. A true read-only root is possible on
+  DietPi (there's no built-in toggle like Raspberry Pi OS's, so it'd mean
+  `overlayroot` plus a second SD-card partition for `/srv/kvmdongle/isos`,
+  since the Zero W has no spare USB port for external writable storage) --
+  ask if you want to move to that later.
 
 ## Running the laptop client
 
@@ -104,6 +114,12 @@ python client.py --serial-port COM5 --capture-index 1
   Pi -- it's the source of truth), mount one (exposed to the target as a
   read-only CD-ROM within a few seconds), or eject. The currently mounted
   one is marked with `*`.
+- **Network** menu: enable/disable the Pi's ISO-upload Wi-Fi AP (phase 2
+  below) remotely, instead of SSHing in to run `wifi-ap-toggle.sh`
+  yourself. Only works if `install-webui.sh` has been run on the Pi --
+  otherwise it replies with an error saying so. Switching it on/off takes
+  a few seconds (hostapd/dnsmasq restarting) and briefly delays key/mouse
+  forwarding while it runs, same as an ISO mount/eject.
 - **Session > Quit** or the window's close button to exit.
 
 Expect **1-5 seconds** after mounting/ejecting before the target's OS

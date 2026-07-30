@@ -11,10 +11,18 @@ commands off the GPIO UART control link from the laptop and:
   - handles LIST_ISOS / MOUNT_ISO / EJECT_ISO by scanning the ISOs
     directory and pointing the mass-storage function's LUN backing file
     at the requested ISO, replying with ACK/ERROR/ISO_LIST/etc.
+  - handles AP_ENABLE / AP_DISABLE / AP_STATUS_QUERY by shelling out to
+    wifi-ap-toggle.sh (phase 2, only present if install-webui.sh has been
+    run), replying with the resulting AP_STATUS or an ERROR.
 
 Single-threaded: the Pi Zero W is single-core, and every operation here
 (HID writes, directory scans, LUN swaps) is fast enough that a plain
-read-parse-handle loop introduces no meaningful latency.
+read-parse-handle loop introduces no meaningful latency. The AP toggle is
+the one exception -- restarting hostapd/dnsmasq takes a few seconds, and
+that blocks the loop for the duration, same trade-off already accepted
+for ISO mount/eject. It's a rare, deliberate, user-initiated action, so a
+few seconds of delayed key/mouse events (buffered by the OS, not lost) is
+an acceptable cost.
 """
 
 import json
@@ -22,6 +30,7 @@ import logging
 import os
 import signal
 import struct
+import subprocess
 import sys
 import time
 
@@ -186,12 +195,52 @@ class StorageController:
             f.write(text)
 
 
+class WifiApController:
+    """Shells out to wifi-ap-toggle.sh (phase 2, only present if
+    install-webui.sh has been run on this Pi) to switch the ISO-upload
+    Wi-Fi AP on/off, and asks systemd whether hostapd is currently active
+    to report status."""
+
+    TOGGLE_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wifi-ap-toggle.sh")
+    TOGGLE_TIMEOUT_SECONDS = 30
+
+    def is_installed(self):
+        return os.path.isfile(self.TOGGLE_SCRIPT)
+
+    def is_enabled(self):
+        try:
+            result = subprocess.run(["systemctl", "is-active", "--quiet", "hostapd"], timeout=5)
+        except (OSError, subprocess.TimeoutExpired):
+            return False
+        return result.returncode == 0
+
+    def set_enabled(self, enabled):
+        """Runs wifi-ap-toggle.sh on/off. Raises RuntimeError with a short
+        message on failure (script missing, non-zero exit, or timeout)."""
+        if not self.is_installed():
+            raise RuntimeError("Wi-Fi AP not installed (run install-webui.sh on the Pi)")
+
+        mode = "on" if enabled else "off"
+        try:
+            result = subprocess.run(
+                [self.TOGGLE_SCRIPT, mode],
+                capture_output=True, text=True, timeout=self.TOGGLE_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            raise RuntimeError("timed out switching Wi-Fi AP mode")
+
+        if result.returncode != 0:
+            message = (result.stderr or result.stdout or "unknown error").strip()
+            raise RuntimeError(message[:200])
+
+
 class Daemon:
     def __init__(self):
         info = load_gadget_info()
         self.keyboard = HidKeyboard(info["hidg_keyboard"])
         self.mouse = HidMouse(info["hidg_mouse"])
         self.storage = StorageController(info["lun0_file_attr"], info["isos_dir"])
+        self.wifi_ap = WifiApController()
         self.parser = protocol.FrameParser()
         self.ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0.1, exclusive=True)
         self.running = True
@@ -262,6 +311,20 @@ class Daemon:
             elif frame_type == p.EJECT_ISO:
                 self.storage.eject()
                 self._send(p.encode_iso_ejected())
+            elif frame_type == p.AP_ENABLE:
+                try:
+                    self.wifi_ap.set_enabled(True)
+                    self._send(p.encode_ap_status(self.wifi_ap.is_enabled()))
+                except RuntimeError as e:
+                    self._send(p.encode_error(frame_type, str(e)))
+            elif frame_type == p.AP_DISABLE:
+                try:
+                    self.wifi_ap.set_enabled(False)
+                    self._send(p.encode_ap_status(self.wifi_ap.is_enabled()))
+                except RuntimeError as e:
+                    self._send(p.encode_error(frame_type, str(e)))
+            elif frame_type == p.AP_STATUS_QUERY:
+                self._send(p.encode_ap_status(self.wifi_ap.is_enabled()))
             elif frame_type == p.PING:
                 self._send(p.encode_pong())
             else:

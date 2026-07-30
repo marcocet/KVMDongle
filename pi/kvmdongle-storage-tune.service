@@ -1,0 +1,11 @@
+[Unit]
+Description=KVM dongle: remount root noatime (reduce routine SD card writes)
+After=local-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/mount -o remount,noatime /
+
+[Install]
+WantedBy=multi-user.target

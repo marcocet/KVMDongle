@@ -14,6 +14,7 @@ don't leave the AP on permanently or port-forward this anywhere.
 
 import json
 import os
+import tempfile
 
 from flask import Flask, redirect, render_template_string, request, url_for
 from werkzeug.utils import secure_filename
@@ -26,6 +27,18 @@ app = Flask(__name__)
 def gadget_info():
     with open(GADGET_INFO_PATH) as f:
         return json.load(f)
+
+
+# Werkzeug spools large multipart uploads (a several-GB ISO) to a temp file
+# via Python's tempfile module BEFORE our upload() view ever runs, using
+# whatever tempfile.tempdir resolves to (normally /tmp). Point it at a
+# disk-backed directory explicitly, so a big upload can't exhaust RAM if
+# /tmp is ever made tmpfs -- see install.sh, which deliberately leaves /tmp
+# alone for this exact reason.
+_tmp_dir = gadget_info().get("tmp_dir")
+if _tmp_dir:
+    os.makedirs(_tmp_dir, exist_ok=True)
+    tempfile.tempdir = _tmp_dir
 
 
 def current_iso(info):

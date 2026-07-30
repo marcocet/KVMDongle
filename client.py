@@ -267,6 +267,15 @@ class SerialLink:
     def send_eject_iso(self):
         self._write(protocol.encode_eject_iso())
 
+    def send_ap_enable(self):
+        self._write(protocol.encode_ap_enable())
+
+    def send_ap_disable(self):
+        self._write(protocol.encode_ap_disable())
+
+    def send_ap_status_query(self):
+        self._write(protocol.encode_ap_status_query())
+
     def close(self):
         self._stop.set()
         self._reader_thread.join(timeout=1)
@@ -370,6 +379,19 @@ class StorageState:
         self.current = None
         self.loading = False
         self.busy = None  # name being mounted, "__eject__", or None
+        self.error = None
+
+
+class NetworkState:
+    """Tracks what the client currently believes about the Pi's ISO-upload
+    Wi-Fi AP (phase 2, optional -- only meaningful if install-webui.sh has
+    been run on the Pi). ap_enabled is None until the first status reply
+    arrives, since the daemon doesn't push this unsolicited at startup the
+    way it does for the mounted ISO."""
+
+    def __init__(self):
+        self.ap_enabled = None  # None = unknown, else True/False
+        self.busy = None  # "enabling", "disabling", or None
         self.error = None
 
 
@@ -527,6 +549,7 @@ def main():
     mouse_capture = False
     set_mouse_capture(False)
     storage = StorageState()
+    network = NetworkState()
 
     running = True
 
@@ -585,12 +608,46 @@ def main():
         items.append((eject_label, "", do_eject))
         return items
 
+    def do_query_ap_status():
+        network.error = None
+        link.send_ap_status_query()
+
+    def do_enable_ap():
+        if network.busy is not None:
+            return
+        network.busy = "enabling"
+        network.error = None
+        link.send_ap_enable()
+
+    def do_disable_ap():
+        if network.busy is not None:
+            return
+        network.busy = "disabling"
+        network.error = None
+        link.send_ap_disable()
+
+    def network_menu_items():
+        items = []
+        if network.error:
+            items.append((f"Error: {network.error}", "", lambda: None))
+        if network.busy == "enabling":
+            items.append(("Enabling AP...", "", lambda: None))
+        elif network.busy == "disabling":
+            items.append(("Disabling AP...", "", lambda: None))
+        else:
+            state = {None: "unknown", True: "ON", False: "OFF"}[network.ap_enabled]
+            items.append((f"AP status: {state}", "", do_query_ap_status))
+            items.append(("Enable Wi-Fi AP (for ISO uploads)", "", do_enable_ap))
+            items.append(("Disable Wi-Fi AP", "", do_disable_ap))
+        return items
+
     menus = [
         ("Macros", [(label, hotkey, lambda usage_ids=usage_ids, label=label: do_macro(usage_ids, label))
                     for (label, usage_ids, hotkey) in MACROS], None),
         ("Clipboard", [("Paste Clipboard", "F11", do_paste)], None),
         ("Mouse", [("Toggle Mouse Capture", "F9", do_toggle_mouse)], None),
         ("Storage", storage_menu_items, do_refresh_isos),
+        ("Network", network_menu_items, do_query_ap_status),
         ("Session", [("Quit", "", do_quit)], None),
     ]
     menu = MenuBar(w, menus, lambda: mouse_capture)
@@ -620,13 +677,21 @@ def main():
             storage.current = None
             storage.busy = None
             storage.error = None
+        elif frame_type == p.AP_STATUS:
+            network.ap_enabled = p.decode_ap_status(payload)
+            network.busy = None
+            network.error = None
         elif frame_type == p.ERROR:
-            _failed_type, message = p.decode_error(payload)
-            storage.busy = None
-            storage.loading = False
-            storage.error = message
+            failed_type, message = p.decode_error(payload)
+            if failed_type in (p.LIST_ISOS, p.MOUNT_ISO, p.EJECT_ISO):
+                storage.busy = None
+                storage.loading = False
+                storage.error = message
+            elif failed_type in (p.AP_ENABLE, p.AP_DISABLE, p.AP_STATUS_QUERY):
+                network.busy = None
+                network.error = message
             print(f"[pi error] {message}")
-        if args.debug and frame_type not in (p.ISO_LIST, p.ISO_MOUNTED, p.ISO_EJECTED, p.ERROR):
+        if args.debug and frame_type not in (p.ISO_LIST, p.ISO_MOUNTED, p.ISO_EJECTED, p.AP_STATUS, p.ERROR):
             print(f"[from pi] type=0x{frame_type:02X} payload={payload!r}")
 
     # Track which pygame keys are currently "down" and what usage ID was

@@ -15,6 +15,7 @@ set -e
 GADGET_NAME=kvmdongle
 GADGET_DIR=/sys/kernel/config/usb_gadget/$GADGET_NAME
 ISOS_DIR=/srv/kvmdongle/isos
+TMP_DIR=/srv/kvmdongle/tmp
 INFO_DIR=/run/kvmdongle
 INFO_FILE=$INFO_DIR/gadget-info.json
 
@@ -32,7 +33,7 @@ if [ -d "$GADGET_DIR" ]; then
     "$SCRIPT_DIR/gadget-teardown.sh" || true
 fi
 
-mkdir -p "$ISOS_DIR"
+mkdir -p "$ISOS_DIR" "$TMP_DIR"
 
 echo "[gadget-setup] creating gadget at $GADGET_DIR"
 mkdir -p "$GADGET_DIR"
@@ -134,7 +135,8 @@ cat > "$INFO_FILE" <<EOF
   "hidg_keyboard": "/dev/$KBD_NODE",
   "hidg_mouse": "/dev/$MOUSE_NODE",
   "lun0_file_attr": "$GADGET_DIR/functions/mass_storage.usb0/lun.0/file",
-  "isos_dir": "$ISOS_DIR"
+  "isos_dir": "$ISOS_DIR",
+  "tmp_dir": "$TMP_DIR"
 }
 EOF
 

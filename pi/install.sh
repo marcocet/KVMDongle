@@ -80,12 +80,34 @@ mkdir -p /srv/kvmdongle/isos
 
 echo "[install] installed to $INSTALL_DIR"
 
-# --- 6. Install and enable systemd services -------------------------------
+# --- 6. Reduce routine SD-card writes. This is a lightweight measure, not
+# a read-only root -- it doesn't repartition anything or need a separate
+# writable partition for /srv/kvmdongle/isos, but it also doesn't make the
+# card immune to corruption on power loss, just less exposed to it. ---
+echo "[install] reducing routine SD-card writes (noatime, volatile journal)..."
+
+mkdir -p /etc/systemd/journald.conf.d
+cp "$SCRIPT_DIR/journald-volatile.conf" /etc/systemd/journald.conf.d/kvmdongle-volatile.conf
+cp "$SCRIPT_DIR/kvmdongle-storage-tune.service" /etc/systemd/system/kvmdongle-storage-tune.service
+
+# Not enabled here: systemd's tmp.mount (tmpfs /tmp). On a 512MB Zero W
+# that's a real risk for the phase-2 web upload -- Werkzeug spools large
+# multipart uploads (i.e. multi-GB ISOs) through Python's default temp
+# directory before pi/webui.py ever sees them, and if that directory were
+# tmpfs, a big enough upload could exhaust RAM. webui.py instead points
+# Python's tempfile module at a disk-backed staging dir explicitly.
+mkdir -p /srv/kvmdongle/tmp
+
+systemctl disable --now dphys-swapfile 2>/dev/null || true
+
+# --- 7. Install and enable systemd services -------------------------------
 cp "$SCRIPT_DIR/kvmdongle-gadget.service" /etc/systemd/system/kvmdongle-gadget.service
 cp "$SCRIPT_DIR/kvmdongle-daemon.service" /etc/systemd/system/kvmdongle-daemon.service
 systemctl daemon-reload
 systemctl enable kvmdongle-gadget.service
 systemctl enable kvmdongle-daemon.service
+systemctl enable kvmdongle-storage-tune.service
+systemctl restart systemd-journald
 
 echo "[install] done."
 echo "[install] a REBOOT is required for the dwc2/UART changes to take effect:"
