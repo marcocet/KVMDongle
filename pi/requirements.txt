@@ -1,0 +1,5 @@
+# Reference only -- install.sh/install-webui.sh install these via apt
+# (python3-serial, python3-flask), since recent Debian-based releases'
+# system pip refuses global installs (PEP 668 "externally managed environment").
+pyserial
+flask   # only needed for phase 2 (pi/webui.py)

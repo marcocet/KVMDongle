@@ -1,0 +1,14 @@
+[Unit]
+Description=KVM dongle: Wi-Fi ISO upload web page
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/kvmdongle/webui.py
+Restart=on-failure
+RestartSec=2
+User=root
+WorkingDirectory=/opt/kvmdongle
+
+[Install]
+WantedBy=multi-user.target

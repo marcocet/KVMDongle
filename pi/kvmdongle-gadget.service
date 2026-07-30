@@ -1,0 +1,13 @@
+[Unit]
+Description=KVM dongle: bring up composite USB gadget (HID keyboard+mouse+storage)
+After=sys-kernel-config.mount
+Before=kvmdongle-daemon.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/kvmdongle/gadget-setup.sh
+ExecStop=/opt/kvmdongle/gadget-teardown.sh
+
+[Install]
+WantedBy=multi-user.target
