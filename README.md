@@ -118,6 +118,10 @@ grainy/blurry here" (see Troubleshooting).
 - The window is resizable (drag an edge/corner, maximize, etc.). The video
   always keeps its own aspect ratio and letterboxes/pillarboxes into
   whatever space is left -- it's never stretched to fill the window.
+- A small light in the top-right of the menu bar shows the link status to
+  the Pi: green if it's replied to anything (including the periodic
+  keepalive) in the last 5 seconds, red otherwise -- including at
+  startup, before the first reply has arrived.
 - Click into the video window, then type normally -- keystrokes go to the
   target whenever the window has focus.
 - The mouse works like a touchscreen, not a captured relative pointer:
@@ -129,6 +133,11 @@ grainy/blurry here" (see Troubleshooting).
   below the menu bar strip, not by any mode switch.
 - **F11** pastes clipboard text onto the target, character by character.
 - **Ctrl+Shift+F1..F5**: Ctrl+Alt+Del, Alt+Tab, Alt+F4, Win+R, Win+D.
+- **Video** menu: switch capture devices without restarting `client.py` --
+  lists detected indices (the active one marked with `*`) and has a
+  Refresh item to re-scan, e.g. after plugging in another capture card.
+  The active device isn't reopened just to confirm it's still there, so
+  switching or refreshing never disrupts an in-progress capture.
 - **Storage** menu: lists ISOs on the Pi's SD card (queried live from the
   Pi -- it's the source of truth), mount one (exposed to the target as a
   read-only CD-ROM within a few seconds), or eject. The currently mounted
@@ -139,6 +148,21 @@ grainy/blurry here" (see Troubleshooting).
   otherwise it replies with an error saying so. Switching it on/off takes
   a few seconds (hostapd/dnsmasq restarting) and briefly delays key/mouse
   forwarding while it runs, same as an ISO mount/eject.
+- **Serial Port** menu: switch which serial port `client.py` talks to
+  without restarting it -- lists detected ports (the active one marked
+  with `*`) and has a Refresh item to re-scan, e.g. after plugging in a
+  different USB-TTL adapter. The new port is only switched over once it's
+  confirmed to open successfully; the old one is left untouched (and only
+  closed after the switch) if it doesn't.
+- **Terminal** menu ("Open Pi Shell" / **F12** to close): opens a
+  full-screen terminal overlay running a real `bash` shell on the Pi over
+  the same serial link -- interactive programs, colors, and cursor
+  movement all work, so it looks and feels like an SSH session even
+  though it's carried entirely over the KB/mouse/storage serial cable
+  (no network involved). While it's open, keyboard and mouse input goes
+  to the shell instead of the target machine; press **F12** at any time
+  to close it and resume normal KVM control. Requires the `pyte` package
+  (see `requirements.txt`) -- the menu item says so if it's missing.
 - **Session > Quit** or the window's close button to exit.
 
 Expect **1-5 seconds** after mounting/ejecting before the target's OS
@@ -347,3 +371,12 @@ sudo /opt/kvmdongle/wifi-ap-toggle.sh off   # back to normal Wi-Fi
   `sudo ./install.sh` + restart-the-daemon step as the mouse-descriptor
   change earlier, since it's a protocol change between `client.py` and
   `pi/daemon.py`.
+- **Terminal menu says "Open Pi Shell" but nothing happens, or the Pi
+  never replies once it's open**: the Terminal feature added new frame
+  types to `protocol.py` (`SHELL_OPEN`/`SHELL_INPUT`/`SHELL_OUTPUT`/etc.)
+  that a Pi still running an older `pi/daemon.py` doesn't know about --
+  same as any other protocol change, this needs `sudo ./install.sh` +
+  a daemon restart on the Pi to pick up. Separately, the menu item itself
+  says "(install pyte)" instead of "Open Pi Shell" if the `pyte` package
+  isn't installed in the laptop's Python environment -- `pip install
+  pyte` (or `pip install -r requirements.txt`) fixes that.

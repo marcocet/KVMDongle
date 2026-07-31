@@ -33,6 +33,10 @@ PING = 0x13
 AP_ENABLE = 0x14
 AP_DISABLE = 0x15
 AP_STATUS_QUERY = 0x16
+SHELL_OPEN = 0x20
+SHELL_CLOSE = 0x21
+SHELL_INPUT = 0x22
+SHELL_RESIZE = 0x23
 
 # Pi -> Laptop
 ERROR = 0x81
@@ -41,6 +45,8 @@ ISO_MOUNTED = 0x83
 ISO_EJECTED = 0x84
 PONG = 0x85
 AP_STATUS = 0x86
+SHELL_OUTPUT = 0x87
+SHELL_CLOSED = 0x88
 
 # Matches USB HID usage-page-0x07 button bit positions used in
 # MOUSE_STATE's buttons byte.
@@ -71,6 +77,18 @@ MOUSE_MIDDLE = 0x04
 # unaffected because each motion sample already changed the position.
 # Sending one atomic report removes the gap entirely.
 MOUSE_ABSOLUTE_MAX = 0x7FFF
+
+# SHELL_* commands run an actual bash session on the Pi (a real PTY, not a
+# canned command runner), tunneled over this same physical UART link
+# instead of the network -- there's no separate auth here beyond what
+# already guards this whole protocol, because there's nothing new to
+# guard: this is a single point-to-point wire you already physically hold
+# and already trust for keyboard/mouse/storage control. SHELL_INPUT/
+# SHELL_OUTPUT carry raw bytes (whatever the shell reads/writes, including
+# ANSI/VT100 escape sequences) with no framing of their own beyond the
+# usual [type][len][payload]; SHELL_RESIZE tells the Pi's PTY the
+# client's current terminal size so full-screen programs (top, nano,
+# etc.) draw correctly instead of assuming a fixed 80x24.
 
 # HID keyboard usage IDs for the modifier keys (Ctrl/Shift/Alt/GUI x L/R).
 # These occupy usage IDs 0xE0-0xE7 on the real HID keyboard usage page,
@@ -219,6 +237,34 @@ def encode_ap_status(enabled):
 
 def decode_ap_status(payload):
     return bool(payload[0])
+
+
+def encode_shell_open():
+    return encode(SHELL_OPEN)
+
+
+def encode_shell_close():
+    return encode(SHELL_CLOSE)
+
+
+def encode_shell_input(data):
+    return encode(SHELL_INPUT, data)
+
+
+def encode_shell_resize(rows, cols):
+    return encode(SHELL_RESIZE, struct.pack("<HH", rows, cols))
+
+
+def decode_shell_resize(payload):
+    return struct.unpack("<HH", payload)
+
+
+def encode_shell_output(data):
+    return encode(SHELL_OUTPUT, data)
+
+
+def encode_shell_closed():
+    return encode(SHELL_CLOSED)
 
 
 def encode_ping():

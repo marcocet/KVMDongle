@@ -16,7 +16,7 @@ corresponding position and clicks/drags there. Nothing is ever hidden
 or grabbed, so there's no mode to toggle.
 
 Requirements:
-    pip install pygame opencv-python pyserial pyperclip
+    pip install pygame opencv-python pyserial pyperclip pyte
 
 Usage:
     python client.py --serial-port COM5 --capture-index 1
@@ -47,11 +47,23 @@ Controls:
         Ctrl+Shift+F3   Alt+F4
         Ctrl+Shift+F4   Win+R
         Ctrl+Shift+F5   Win+D
+    - Use the Video menu to switch capture devices without restarting --
+      lists detected indices, marks the active one, and has a Refresh
+      item to re-scan (e.g. after plugging in another capture card).
+    - Use the Serial Port menu to switch which COM/tty port talks to the
+      Pi without restarting -- handy if Windows reassigned the adapter to
+      a different COM number after a reconnect.
     - Use the Storage menu to list ISOs already on the Pi's SD card,
       mount one (exposed to the target as a read-only CD-ROM), or eject
       the current one. The Pi is the source of truth for what's
       available -- add ISOs by swapping the SD card or via the Pi's
       Wi-Fi upload page.
+    - Use Terminal > Open Pi Shell (or F12 once it's open) to run bash
+      commands directly on the Pi, over the same serial link -- like the
+      shell half of an SSH session, rendered with real colors/cursor
+      movement (requires `pip install pyte`). While open, ALL keyboard
+      input goes to that shell instead of the target; F12 always closes
+      it, so there's no way to get stuck.
     - Use Session > Quit in the menu bar, or the window's close button,
       to exit (there's no local keyboard shortcut for this, since every
       keystroke while focused is forwarded to the target).
@@ -67,6 +79,7 @@ import time
 import cv2
 import pygame
 import serial
+import serial.tools.list_ports
 
 import protocol
 
@@ -74,6 +87,11 @@ try:
     import pyperclip
 except ImportError:
     pyperclip = None
+
+try:
+    import pyte
+except ImportError:
+    pyte = None
 
 MENU_HEIGHT = 28
 MIN_WINDOW_WIDTH = 320
@@ -246,6 +264,11 @@ class SerialLink:
     briefly) is never stuck waiting behind a long blocking read."""
 
     KEEPALIVE_INTERVAL_SECONDS = 2.0
+    # How long without a single reply before the connection indicator
+    # switches to "disconnected" -- comfortably more than one keepalive
+    # round trip (which should normally take milliseconds), so a single
+    # slow reply doesn't flap the indicator.
+    CONNECTION_TIMEOUT_SECONDS = 5.0
 
     def __init__(self, port, baud):
         self.port = port
@@ -257,6 +280,9 @@ class SerialLink:
         self._stop = threading.Event()
         self._io_lock = threading.RLock()
         self._last_write_time = time.monotonic()
+        # None until the first frame ever arrives from the Pi -- there's no
+        # reply yet at startup, so is_connected() should say so honestly.
+        self._last_receive_time = None
         self._reader_thread = threading.Thread(target=self._read_loop, daemon=True)
         self._reader_thread.start()
 
@@ -287,6 +313,7 @@ class SerialLink:
                 time.sleep(0.005)
                 continue
             for frame in self._parser.feed(data):
+                self._last_receive_time = time.monotonic()
                 self.incoming.put(frame)
 
     def _write(self, frame_bytes):
@@ -306,6 +333,16 @@ class SerialLink:
     def send_keepalive_if_idle(self):
         if time.monotonic() - self._last_write_time > self.KEEPALIVE_INTERVAL_SECONDS:
             self.send_ping()
+
+    def is_connected(self):
+        """True if the Pi has replied to *something* -- a PONG, an ISO
+        list, whatever -- within the last CONNECTION_TIMEOUT_SECONDS. The
+        periodic keepalive (see send_keepalive_if_idle) guarantees there's
+        always something recent to judge this by, even during otherwise
+        quiet stretches."""
+        if self._last_receive_time is None:
+            return False
+        return time.monotonic() - self._last_receive_time < self.CONNECTION_TIMEOUT_SECONDS
 
     def send_ping(self):
         self._write(protocol.encode_ping())
@@ -337,20 +374,47 @@ class SerialLink:
     def send_ap_status_query(self):
         self._write(protocol.encode_ap_status_query())
 
+    def send_shell_open(self):
+        self._write(protocol.encode_shell_open())
+
+    def send_shell_close(self):
+        self._write(protocol.encode_shell_close())
+
+    def send_shell_input(self, data):
+        self._write(protocol.encode_shell_input(data))
+
+    def send_shell_resize(self, rows, cols):
+        self._write(protocol.encode_shell_resize(rows, cols))
+
     def close(self):
         self._stop.set()
         self._reader_thread.join(timeout=1)
         self.ser.close()
 
 
-def find_capture_devices(max_index=5):
+def find_capture_devices(max_index=5, skip_index=None):
+    """Probes indices 0..max_index-1 by briefly opening each one. skip_index
+    (the currently in-use device, if any) is reported as present without
+    actually being reopened -- some backends won't let you open a device
+    twice at once, and even if they would, doing so would risk disrupting
+    the live stream just to confirm what we already know is working."""
     found = []
     for i in range(max_index):
+        if i == skip_index:
+            found.append(i)
+            continue
         cap = cv2.VideoCapture(i)
         if cap.isOpened():
             found.append(i)
             cap.release()
     return found
+
+
+def list_serial_ports():
+    """Unlike capture devices, enumerating serial ports doesn't require
+    opening them at all (just a registry/sysfs query), so there's no
+    equivalent risk to sidestep for the currently-active one."""
+    return [p.device for p in serial.tools.list_ports.comports()]
 
 
 def open_capture(index, width=None, height=None, fourcc=None):
@@ -375,6 +439,16 @@ def open_capture(index, width=None, height=None, fourcc=None):
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 
     return cap
+
+
+def describe_negotiated_mode(cap):
+    """Human-readable summary of what a capture device actually negotiated
+    -- handy for comparing against OBS's device properties when video
+    quality looks off (see open_capture's docstring)."""
+    fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
+    fourcc_str = "".join(chr((fourcc >> (8 * i)) & 0xFF) for i in range(4)) if fourcc else "?"
+    return (f"{int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))}x{int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))} "
+            f"'{fourcc_str}' @ {cap.get(cv2.CAP_PROP_FPS):.0f}fps")
 
 
 class VideoStream:
@@ -491,6 +565,29 @@ def map_click_to_target(pos, video_rect):
     return x_frac, y_frac
 
 
+class VideoState:
+    """Tracks which local capture device is active and which others were
+    last seen -- purely local/synchronous (no round trip to the Pi), so
+    unlike Storage/Network below the device list is scanned once when the
+    menu is opened rather than needing an explicit reply to arrive."""
+
+    def __init__(self, current_index):
+        self.current_index = current_index
+        self.available = [current_index]
+        self.error = None
+
+
+class PortState:
+    """Tracks which serial port is active and which others were last seen
+    -- same pattern as VideoState (local/synchronous scan, no round trip
+    to the Pi needed to list them)."""
+
+    def __init__(self, current_port):
+        self.current_port = current_port
+        self.available = [current_port]
+        self.error = None
+
+
 class StorageState:
     """Tracks what the client currently believes about the Pi's ISO
     library, updated as replies arrive from the reader thread's queue."""
@@ -527,7 +624,10 @@ class MenuBar:
     whose contents depend on the Pi's latest reply rather than being fixed
     at startup like Macros/Clipboard/Session."""
 
-    def __init__(self, width, menus):
+    CONNECTED_COLOR = (60, 200, 60)
+    DISCONNECTED_COLOR = (200, 60, 60)
+
+    def __init__(self, width, menus, get_connected=None):
         self.width = width
         self.font = pygame.font.SysFont(None, 20)
         self.bg = (40, 40, 40)
@@ -535,6 +635,10 @@ class MenuBar:
         self.highlight = (70, 70, 70)
         self.border = (90, 90, 90)
         self.open_index = None
+        # Zero-arg callable returning True/False for the connection-status
+        # light, right-aligned in the bar. Optional (None skips drawing it
+        # entirely) so tests/other callers don't need to supply one.
+        self.get_connected = get_connected
 
         # menus: list of (label, items_or_callable, on_open_or_None)
         self.menus = menus
@@ -557,6 +661,10 @@ class MenuBar:
         # are left-anchored and stay valid as the window grows/shrinks.
         self.width = width
 
+    def _connection_color(self):
+        connected = self.get_connected is not None and self.get_connected()
+        return self.CONNECTED_COLOR if connected else self.DISCONNECTED_COLOR
+
     def draw(self, screen):
         screen.fill(self.bg, pygame.Rect(0, 0, self.width, MENU_HEIGHT))
         pygame.draw.line(screen, self.border, (0, MENU_HEIGHT - 1), (self.width, MENU_HEIGHT - 1))
@@ -567,6 +675,15 @@ class MenuBar:
                 pygame.draw.rect(screen, self.highlight, rect)
             text = self.font.render(label, True, self.fg)
             screen.blit(text, (rect.x + 10, rect.y + (MENU_HEIGHT - text.get_height()) // 2))
+
+        # Pi connection status light, right-aligned: green while the link
+        # has heard from the Pi recently, red otherwise (including at
+        # startup, before the first reply has ever arrived).
+        if self.get_connected is not None:
+            radius = 6
+            cx = self.width - radius - 10
+            cy = MENU_HEIGHT // 2
+            pygame.draw.circle(screen, self._connection_color(), (cx, cy), radius)
 
         if self.open_index is not None:
             self._draw_dropdown(screen, self.open_index)
@@ -624,6 +741,170 @@ class MenuBar:
         was_open = self.open_index is not None
         self.open_index = None
         return was_open
+
+
+# ANSI 16-color palette (pyte's color names -> RGB) for rendering the
+# terminal overlay below. Note pyte names color 3 (and its bright variant)
+# "brown"/"brightbrown", not "yellow" -- confirmed directly against pyte
+# rather than assumed, since xterm's historical naming is easy to get
+# wrong from memory. Anything outside this table (256-color palette
+# indices, truecolor) falls back to the default fg/bg rather than being
+# interpreted -- covers ordinary shell usage (ls colors, colored prompts,
+# systemctl status, etc) without taking on a much bigger color model.
+_ANSI_COLORS = {
+    "black": (0, 0, 0), "red": (205, 49, 49), "green": (13, 188, 121),
+    "brown": (229, 229, 16), "blue": (36, 114, 200), "magenta": (188, 63, 188),
+    "cyan": (17, 168, 205), "white": (229, 229, 229),
+    "brightblack": (102, 102, 102), "brightred": (241, 76, 76),
+    "brightgreen": (35, 209, 139), "brightbrown": (245, 245, 67),
+    "brightblue": (59, 142, 234), "brightmagenta": (214, 112, 214),
+    "brightcyan": (41, 184, 219), "brightwhite": (255, 255, 255),
+}
+_TERMINAL_DEFAULT_FG = (220, 220, 220)
+_TERMINAL_DEFAULT_BG = (12, 12, 12)
+
+# Translates special keys into the byte sequences a real terminal (and
+# thus bash/readline) expects -- xterm/VT100 conventions, not HID usage
+# IDs (this is emulating normal local typing into a shell, not USB input).
+_TERMINAL_KEY_SEQUENCES = {
+    pygame.K_UP: b"\x1b[A",
+    pygame.K_DOWN: b"\x1b[B",
+    pygame.K_RIGHT: b"\x1b[C",
+    pygame.K_LEFT: b"\x1b[D",
+    pygame.K_HOME: b"\x1b[H",
+    pygame.K_END: b"\x1b[F",
+    pygame.K_DELETE: b"\x1b[3~",
+    pygame.K_PAGEUP: b"\x1b[5~",
+    pygame.K_PAGEDOWN: b"\x1b[6~",
+    pygame.K_BACKSPACE: b"\x7f",
+    pygame.K_TAB: b"\t",
+    pygame.K_RETURN: b"\r",
+    pygame.K_KP_ENTER: b"\r",
+    pygame.K_ESCAPE: b"\x1b",
+}
+
+
+class TerminalOverlay:
+    """A small ANSI/VT100 terminal, drawn as an overlay on top of the
+    video, for running shell commands directly on the Pi over the same
+    serial link used for everything else -- like the shell half of an SSH
+    session, just tunneled over the UART instead of the network, since
+    that link is already there and already trusted (see protocol.py's
+    SHELL_* comment for why no separate auth is layered on top of this).
+
+    Uses pyte (a pure-Python VT100/xterm terminal emulation library) to
+    interpret the shell's raw output -- cursor movement, colors, screen
+    clears, etc -- into a screen buffer, which is then just rendered here
+    as a grid of colored characters. Writing an ANSI/VT100 escape-sequence
+    parser from scratch would be reinventing a large, well-tested wheel.
+
+    While open, ALL keyboard input goes to the shell instead of the target
+    (see main()'s event loop) -- F12 always closes the overlay regardless
+    of what's running in it, so there's no way to get stuck unable to get
+    back to normal KVM control."""
+
+    MARGIN = 16
+    MIN_COLS = 20
+    MIN_ROWS = 5
+
+    def __init__(self, link):
+        self.link = link
+        self.is_open = False
+        self.font = pygame.font.SysFont("consolas,couriernew,monospace", 16)
+        self.char_w, self.char_h = self.font.size("M")
+        self.cols = 80
+        self.rows = 24
+        self.screen = pyte.Screen(self.cols, self.rows) if pyte else None
+        self.stream = pyte.Stream(self.screen) if pyte else None
+
+    def _fit(self, window_width, window_height):
+        """How many character columns/rows fit in the given window size,
+        leaving room for margins and the menu bar strip."""
+        available_w = window_width - 2 * self.MARGIN
+        available_h = window_height - MENU_HEIGHT - 2 * self.MARGIN
+        cols = max(self.MIN_COLS, available_w // self.char_w)
+        rows = max(self.MIN_ROWS, available_h // self.char_h)
+        return cols, rows
+
+    def open(self, window_width, window_height):
+        if pyte is None:
+            print("[terminal] pyte is not installed -- run: pip install pyte")
+            return
+        if self.is_open:
+            return
+        self.cols, self.rows = self._fit(window_width, window_height)
+        self.screen.resize(self.rows, self.cols)
+        self.screen.reset()
+        self.is_open = True
+        self.link.send_shell_open()
+        self.link.send_shell_resize(self.rows, self.cols)
+
+    def close(self):
+        if not self.is_open:
+            return
+        self.is_open = False
+        self.link.send_shell_close()
+
+    def handle_window_resize(self, window_width, window_height):
+        """Called when the app window resizes while the terminal happens
+        to be open, so full-screen programs (top, nano, ...) keep drawing
+        at the right size instead of whatever it was when opened."""
+        if not self.is_open:
+            return
+        new_cols, new_rows = self._fit(window_width, window_height)
+        if (new_cols, new_rows) == (self.cols, self.rows):
+            return
+        self.cols, self.rows = new_cols, new_rows
+        self.screen.resize(self.rows, self.cols)
+        self.link.send_shell_resize(self.rows, self.cols)
+
+    def feed(self, data):
+        if self.stream is not None:
+            self.stream.feed(data.decode("utf-8", errors="replace"))
+
+    def handle_keydown(self, event):
+        """Returns the bytes to send to the shell for this KEYDOWN event.
+        Uses event.unicode (the actual typed character) rather than the
+        HID usage-ID mapping the main KVM keyboard path uses -- this is
+        emulating normal local terminal typing (readline, bash), not USB
+        HID input, so the actual typed character is what's wanted."""
+        ctrl = bool(event.mod & pygame.KMOD_CTRL)
+        if ctrl and pygame.K_a <= event.key <= pygame.K_z:
+            return bytes([event.key - pygame.K_a + 1])  # Ctrl+A=0x01 .. Ctrl+Z=0x1A
+        if event.key in _TERMINAL_KEY_SEQUENCES:
+            return _TERMINAL_KEY_SEQUENCES[event.key]
+        if event.unicode:
+            return event.unicode.encode("utf-8", errors="ignore")
+        return b""
+
+    def draw(self, surface, window_width, window_height):
+        if self.screen is None:
+            return
+        width, height = self.cols * self.char_w, self.rows * self.char_h
+        x0 = (window_width - width) // 2
+        y0 = MENU_HEIGHT + max(self.MARGIN, (window_height - MENU_HEIGHT - height) // 2)
+
+        pygame.draw.rect(surface, _TERMINAL_DEFAULT_BG, (x0 - 4, y0 - 4, width + 8, height + 8))
+        pygame.draw.rect(surface, (90, 90, 90), (x0 - 4, y0 - 4, width + 8, height + 8), 1)
+
+        for row in range(self.rows):
+            line = self.screen.buffer[row]
+            for col in range(self.cols):
+                char = line[col]
+                cx, cy = x0 + col * self.char_w, y0 + row * self.char_h
+                if char.bg != "default":
+                    bg = _ANSI_COLORS.get(char.bg)
+                    if bg is not None:
+                        pygame.draw.rect(surface, bg, (cx, cy, self.char_w, self.char_h))
+                if char.data and char.data != " ":
+                    fg = _ANSI_COLORS.get(char.fg, _TERMINAL_DEFAULT_FG)
+                    glyph = self.font.render(char.data, True, fg)
+                    surface.blit(glyph, (cx, cy))
+
+        cursor = self.screen.cursor
+        if not cursor.hidden and 0 <= cursor.x < self.cols and 0 <= cursor.y < self.rows:
+            cx, cy = x0 + cursor.x * self.char_w, y0 + cursor.y * self.char_h
+            pygame.draw.rect(surface, (200, 200, 200), (cx, cy, self.char_w, self.char_h), 1)
 
 
 def _fix_windows_dpi_scaling():
@@ -691,11 +972,8 @@ def main():
         print(f"Could not open capture device at index {capture_index}.")
         sys.exit(1)
 
-    negotiated_fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
-    fourcc_str = "".join(chr((negotiated_fourcc >> (8 * i)) & 0xFF) for i in range(4)) if negotiated_fourcc else "?"
-    print(f"Negotiated capture mode: {int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))}x"
-          f"{int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))} '{fourcc_str}' @ {cap.get(cv2.CAP_PROP_FPS):.0f}fps -- "
-          f"compare against OBS's device properties for this same capture card if video quality looks off")
+    print(f"Negotiated capture mode: {describe_negotiated_mode(cap)} -- compare against OBS's "
+          f"device properties for this same capture card if video quality looks off")
 
     print(f"Opening serial link on {args.serial_port} @ {args.baud} baud...")
     try:
@@ -732,8 +1010,11 @@ def main():
     # never sets any of these bits.
     held_target_buttons = 0
 
+    video_state = VideoState(capture_index)
+    port_state = PortState(args.serial_port)
     storage = StorageState()
     network = NetworkState()
+    terminal = TerminalOverlay(link)
 
     running = True
 
@@ -746,6 +1027,96 @@ def main():
     def do_quit():
         nonlocal running
         running = False
+
+    def do_toggle_terminal():
+        if terminal.is_open:
+            terminal.close()
+        else:
+            terminal.open(screen.get_width(), screen.get_height())
+
+    def terminal_menu_items():
+        label = "Close Pi Shell (F12)" if terminal.is_open else "Open Pi Shell"
+        items = [(label, "", do_toggle_terminal)]
+        if pyte is None:
+            items.append(("(requires: pip install pyte)", "", lambda: None))
+        return items
+
+    def do_refresh_video_devices():
+        video_state.error = None
+        video_state.available = find_capture_devices(skip_index=video_state.current_index)
+
+    def do_switch_video(new_index):
+        nonlocal video
+        if new_index == video_state.current_index:
+            return
+        print(f"Switching to capture device index {new_index}...")
+        new_cap = open_capture(new_index, args.capture_width, args.capture_height, args.capture_fourcc)
+        if not new_cap.isOpened():
+            video_state.error = f"Could not open device {new_index}"
+            return
+        old_video = video
+        video = VideoStream(new_cap)
+        old_video.release()
+        video_state.current_index = new_index
+        video_state.error = None
+        print(f"Switched to capture device {new_index}: {describe_negotiated_mode(new_cap)}")
+
+    def video_menu_items():
+        items = []
+        if video_state.error:
+            items.append((f"Error: {video_state.error}", "", lambda: None))
+        if not video_state.available:
+            items.append(("(no devices found)", "", lambda: None))
+        else:
+            for idx in sorted(video_state.available):
+                marker = "* " if idx == video_state.current_index else "  "
+                items.append((f"{marker}Device {idx}", "", lambda idx=idx: do_switch_video(idx)))
+        items.append(("Refresh", "", do_refresh_video_devices))
+        return items
+
+    def do_refresh_serial_ports():
+        port_state.error = None
+        port_state.available = list_serial_ports()
+        if port_state.current_port not in port_state.available:
+            port_state.available.append(port_state.current_port)
+
+    def do_switch_serial_port(new_port):
+        nonlocal link
+        if new_port == port_state.current_port:
+            return
+        print(f"Switching to serial port {new_port}...")
+        try:
+            # SerialLink's constructor sleeps ~2s (letting the Pi's daemon
+            # settle after the port opens) -- a deliberate, bounded pause
+            # for a rare, user-initiated action, same trade-off already
+            # accepted for ISO mount/eject.
+            new_link = SerialLink(new_port, args.baud)
+        except serial.SerialException as e:
+            port_state.error = f"Could not open {new_port}: {e}"
+            return
+        old_link = link
+        link = new_link
+        # TerminalOverlay holds its own reference to the link it sends
+        # shell I/O through -- keep it pointed at whichever one is live,
+        # same reasoning as the MenuBar connection-indicator lambda above.
+        terminal.link = new_link
+        old_link.close()
+        port_state.current_port = new_port
+        port_state.error = None
+        print(f"Switched to serial port {new_port}")
+
+    def port_menu_items():
+        items = []
+        if port_state.error:
+            items.append((f"Error: {port_state.error}", "", lambda: None))
+        if not port_state.available:
+            items.append(("(no ports found)", "", lambda: None))
+        else:
+            for dev in port_state.available:
+                marker = "* " if dev == port_state.current_port else "  "
+                items.append((f"{marker}{dev}", "", lambda dev=dev: do_switch_serial_port(dev)))
+        items.append(("Refresh", "", do_refresh_serial_ports))
+        return items
 
     def do_refresh_isos():
         storage.loading = True
@@ -823,11 +1194,19 @@ def main():
         ("Macros", [(label, hotkey, lambda usage_ids=usage_ids, label=label: do_macro(usage_ids, label))
                     for (label, usage_ids, hotkey) in MACROS], None),
         ("Clipboard", [("Paste Clipboard", "F11", do_paste)], None),
+        ("Video", video_menu_items, do_refresh_video_devices),
+        ("Serial Port", port_menu_items, do_refresh_serial_ports),
         ("Storage", storage_menu_items, do_refresh_isos),
         ("Network", network_menu_items, do_query_ap_status),
+        ("Terminal", terminal_menu_items, None),
         ("Session", [("Quit", "", do_quit)], None),
     ]
-    menu = MenuBar(w, menus)
+    # A plain "link.is_connected" here would snapshot a bound method on
+    # whichever SerialLink object is current *right now* -- once
+    # do_switch_serial_port() can reassign `link` to a whole new object,
+    # that snapshot would silently keep reporting the OLD (possibly now
+    # closed) link forever. The lambda re-reads `link` fresh on every call.
+    menu = MenuBar(w, menus, lambda: link.is_connected())
 
     pygame.display.set_caption("Crash Cart - keyboard always live - click/drag video to control target")
 
@@ -864,7 +1243,12 @@ def main():
                 network.busy = None
                 network.error = message
             print(f"[pi error] {message}")
-        if args.debug and frame_type not in (p.ISO_LIST, p.ISO_MOUNTED, p.ISO_EJECTED, p.AP_STATUS, p.ERROR):
+        elif frame_type == p.SHELL_OUTPUT:
+            terminal.feed(payload)
+        elif frame_type == p.SHELL_CLOSED:
+            terminal.is_open = False
+        if args.debug and frame_type not in (p.ISO_LIST, p.ISO_MOUNTED, p.ISO_EJECTED, p.AP_STATUS, p.ERROR,
+                                              p.SHELL_OUTPUT, p.SHELL_CLOSED):
             print(f"[from pi] type=0x{frame_type:02X} payload={payload!r}")
 
     # Track which pygame keys are currently "down" and what usage ID was
@@ -903,6 +1287,8 @@ def main():
                 screen.blit(surf, (offset_x, offset_y))
                 video_rect = pygame.Rect(offset_x, offset_y, disp_w, disp_h)
         menu.draw(screen)
+        if terminal.is_open:
+            terminal.draw(screen, screen.get_width(), screen.get_height())
         pygame.display.flip()
 
         link.send_keepalive_if_idle()
@@ -920,8 +1306,26 @@ def main():
                 new_h = max(MIN_WINDOW_HEIGHT, event.h)
                 screen = pygame.display.set_mode((new_w, new_h), pygame.RESIZABLE)
                 menu.resize(new_w)
+                terminal.handle_window_resize(new_w, new_h)
 
             elif event.type == pygame.KEYDOWN:
+                # F12 always closes the terminal regardless of what's
+                # running in it -- the one escape hatch back to normal KVM
+                # control, so there's no way to get stuck in shell mode.
+                if event.key == pygame.K_F12:
+                    if terminal.is_open:
+                        do_toggle_terminal()
+                    continue
+
+                if terminal.is_open:
+                    # Keyboard belongs to the shell while the terminal is
+                    # open, not the target -- this is a context switch,
+                    # not an additional input source layered on top.
+                    data = terminal.handle_keydown(event)
+                    if data:
+                        link.send_shell_input(data)
+                    continue
+
                 if event.key == pygame.K_F11:
                     do_paste()
                     continue
@@ -964,6 +1368,11 @@ def main():
                     # Our own UI space (the bar itself, or an open dropdown
                     # for a non-left click) -- never forward to the target.
                     continue
+                if terminal.is_open:
+                    # The overlay covers the view and input control has
+                    # shifted to the Pi's shell -- clicks shouldn't punch
+                    # through to whatever's underneath on the target.
+                    continue
                 button = {1: protocol.MOUSE_LEFT, 2: protocol.MOUSE_MIDDLE, 3: protocol.MOUSE_RIGHT}.get(event.button)
                 if button is not None:
                     frac = map_click_to_target(event.pos, video_rect)
@@ -999,7 +1408,7 @@ def main():
             elif event.type == pygame.MOUSEMOTION:
                 # No hover on a touchscreen -- only forward motion while
                 # dragging (a button we sent down is still held).
-                if held_target_buttons:
+                if held_target_buttons and not terminal.is_open:
                     frac = map_click_to_target(event.pos, video_rect)
                     if frac is not None:
                         link.send_mouse_state(*frac, held_target_buttons)
@@ -1008,7 +1417,7 @@ def main():
 
             elif event.type == pygame.MOUSEWHEEL:
                 pos = pygame.mouse.get_pos()
-                if pos[1] >= MENU_HEIGHT:
+                if pos[1] >= MENU_HEIGHT and not terminal.is_open:
                     frac = map_click_to_target(pos, video_rect)
                     if frac is not None:
                         link.send_mouse_state(*frac, held_target_buttons)
@@ -1021,6 +1430,11 @@ def main():
     # release any keys still held down before exiting
     for usage_id in active_keys.values():
         link.send_key(False, usage_id)
+
+    # Tell the Pi to end the shell session too -- otherwise a still-open
+    # bash process would sit there running indefinitely after we exit.
+    if terminal.is_open:
+        terminal.close()
 
     video.release()
     link.close()

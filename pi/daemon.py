@@ -15,6 +15,11 @@ commands off the GPIO UART control link from the laptop and:
   - handles AP_ENABLE / AP_DISABLE / AP_STATUS_QUERY by shelling out to
     wifi-ap-toggle.sh (phase 2, only present if install-webui.sh has been
     run), replying with the resulting AP_STATUS or an ERROR.
+  - handles SHELL_OPEN / SHELL_CLOSE / SHELL_INPUT / SHELL_RESIZE by
+    running an actual bash session in a real PTY (see ShellSession),
+    streaming its output back as SHELL_OUTPUT frames -- a genuine shell,
+    not a canned command runner, so the client can render it like a
+    normal terminal (ls colors, tab completion, nano, top, all of it).
 
 Single-threaded for everything except the AP commands: the Pi Zero W is
 single-core, and HID writes/directory scans/LUN swaps are fast enough
@@ -53,6 +58,22 @@ import threading
 import time
 
 import serial
+
+# POSIX-only, needed only by ShellSession -- imported defensively (rather
+# than left to fail at the top of the file) so daemon.py still imports
+# cleanly in non-Linux dev/test environments, where these simply aren't
+# available. Real Pi deployments are always Linux, so this is never
+# actually None there. Module-level (not a deferred import inside
+# ShellSession's methods) specifically so tests can monkeypatch e.g.
+# `daemon.pty` the same way they already do `daemon.subprocess`.
+try:
+    import fcntl
+    import pty
+    import termios
+except ImportError:
+    fcntl = None
+    pty = None
+    termios = None
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import protocol
@@ -321,6 +342,112 @@ class WifiApController:
             raise RuntimeError(message[:200])
 
 
+class ShellSession:
+    """A real bash session in a real PTY -- like the shell half of an SSH
+    connection, just tunneled over the same UART link as everything else
+    instead of the network. Deliberately not a restricted/sandboxed
+    command runner: there's no separate trust boundary to enforce here,
+    since this is a single point-to-point wire the laptop already has to
+    be physically wired to in order to send anything at all.
+
+    One session at a time (matching the physical reality of this project
+    -- only one client can be on the other end of the wire anyway).
+    Opening while already open, or closing while already closed, are both
+    safe no-ops, so the client doesn't need to track exact state to avoid
+    double-open/double-close races.
+
+    The output-reading thread is what actually detects the shell process
+    exiting (a plain blocking os.read() on the PTY master returns EOF, or
+    the read itself raises, once the child is gone) -- so close() just
+    signals the child to exit and lets that same thread notice and clean
+    up, whether the exit was requested by the client or the user just
+    typed `exit` themselves. That keeps there being exactly one cleanup
+    path instead of two slightly-different ones."""
+
+    READ_CHUNK_SIZE = 4096
+
+    def __init__(self, send_output, on_closed):
+        self.send_output = send_output  # callback(bytes)
+        self.on_closed = on_closed  # callback() -- called once, when the shell exits
+        self.master_fd = None
+        self.pid = None
+        self._thread = None
+
+    def is_open(self):
+        return self.pid is not None
+
+    def open(self):
+        if pty is None:
+            raise RuntimeError("pty module not available (daemon.py must run on Linux)")
+        if self.is_open():
+            return
+        pid, fd = pty.fork()
+        if pid == 0:
+            # Child: replace this process image with a login-ish shell.
+            # Falls back to sh if bash isn't installed for some reason.
+            try:
+                os.execvp("bash", ["bash"])
+            except OSError:
+                os.execvp("sh", ["sh"])
+            os._exit(1)  # only reached if both execvp calls fail
+        self.pid = pid
+        self.master_fd = fd
+        self._thread = threading.Thread(target=self._read_loop, daemon=True)
+        self._thread.start()
+
+    def resize(self, rows, cols):
+        if self.master_fd is None or fcntl is None:
+            return
+        try:
+            winsize = struct.pack("HHHH", rows, cols, 0, 0)
+            fcntl.ioctl(self.master_fd, termios.TIOCSWINSZ, winsize)
+        except OSError:
+            pass
+
+    def write(self, data):
+        if self.master_fd is not None:
+            try:
+                os.write(self.master_fd, data)
+            except OSError:
+                pass
+
+    def close(self):
+        if self.pid is not None:
+            try:
+                os.kill(self.pid, signal.SIGHUP)
+            except ProcessLookupError:
+                pass
+        if self._thread is not None:
+            self._thread.join(timeout=2)
+
+    def _read_loop(self):
+        fd = self.master_fd
+        while True:
+            try:
+                data = os.read(fd, self.READ_CHUNK_SIZE)
+            except OSError:
+                break
+            if not data:
+                break
+            self.send_output(data)
+        self._cleanup()
+        self.on_closed()
+
+    def _cleanup(self):
+        if self.master_fd is not None:
+            try:
+                os.close(self.master_fd)
+            except OSError:
+                pass
+            self.master_fd = None
+        if self.pid is not None:
+            pid, self.pid = self.pid, None
+            try:
+                os.waitpid(pid, 0)
+            except ChildProcessError:
+                pass
+
+
 def _open_hidg_nonblock(path):
     """O_NONBLOCK so a write() that can't complete immediately (host not
     polling the endpoint) raises BlockingIOError instead of blocking --
@@ -342,6 +469,10 @@ class Daemon:
         self.mouse = HidMouse(mouse_fd, info["hidg_mouse"])
         self.storage = StorageController(info["lun0_file_attr"], info["isos_dir"])
         self.wifi_ap = WifiApController()
+        self.shell = ShellSession(
+            send_output=lambda data: self._send(protocol.encode_shell_output(data)),
+            on_closed=lambda: self._send(protocol.encode_shell_closed()),
+        )
         self.parser = protocol.FrameParser()
         self.ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0.1, exclusive=True)
         # AP commands run on background threads (see module docstring), so
@@ -373,6 +504,7 @@ class Daemon:
             self.mouse.release_all_buttons()
         except Exception:
             pass
+        self.shell.close()
         self.keyboard.close()
         self.mouse.close()
         self.ser.close()
@@ -437,6 +569,15 @@ class Daemon:
                 self._run_ap_async(frame_type, lambda: self.wifi_ap.set_enabled(False))
             elif frame_type == p.AP_STATUS_QUERY:
                 self._run_ap_async(frame_type, lambda: None)
+            elif frame_type == p.SHELL_OPEN:
+                self.shell.open()
+            elif frame_type == p.SHELL_CLOSE:
+                self.shell.close()
+            elif frame_type == p.SHELL_INPUT:
+                self.shell.write(payload)
+            elif frame_type == p.SHELL_RESIZE:
+                rows, cols = p.decode_shell_resize(payload)
+                self.shell.resize(rows, cols)
             elif frame_type == p.PING:
                 self._send(p.encode_pong())
             else:
