@@ -10,19 +10,36 @@ commands off the GPIO UART control link from the laptop and:
     from /run/kvmdongle/gadget-info.json rather than hardcoded
   - handles LIST_ISOS / MOUNT_ISO / EJECT_ISO by scanning the ISOs
     directory and pointing the mass-storage function's LUN backing file
-    at the requested ISO, replying with ACK/ERROR/ISO_LIST/etc.
+    at the requested ISO, replying with ISO_LIST/ISO_MOUNTED/ISO_EJECTED/
+    ERROR as appropriate
   - handles AP_ENABLE / AP_DISABLE / AP_STATUS_QUERY by shelling out to
     wifi-ap-toggle.sh (phase 2, only present if install-webui.sh has been
     run), replying with the resulting AP_STATUS or an ERROR.
 
-Single-threaded: the Pi Zero W is single-core, and every operation here
-(HID writes, directory scans, LUN swaps) is fast enough that a plain
-read-parse-handle loop introduces no meaningful latency. The AP toggle is
-the one exception -- restarting hostapd/dnsmasq takes a few seconds, and
-that blocks the loop for the duration, same trade-off already accepted
-for ISO mount/eject. It's a rare, deliberate, user-initiated action, so a
-few seconds of delayed key/mouse events (buffered by the OS, not lost) is
-an acceptable cost.
+Single-threaded for everything except the AP commands: the Pi Zero W is
+single-core, and HID writes/directory scans/LUN swaps are fast enough
+that a plain read-parse-handle loop introduces no meaningful latency. The
+AP commands are the one exception, and they run in a background thread,
+not inline -- subprocess.run(timeout=...) only kills the *direct* child
+on timeout, not any grandchild it may have spawned (nmcli, hostapd,
+etc.), so if one of those is left holding the captured stdout/stderr
+pipes open, the read blocks forever regardless of the nominal timeout.
+Running it inline would freeze keyboard/mouse (and everything else) along
+with it until the daemon was restarted -- which is exactly the bug this
+was fixed after hitting. WifiApController.set_enabled() also now kills
+the whole process group on timeout, not just the immediate child, so a
+hang gets cleaned up instead of merely being isolated from the main loop.
+
+The /dev/hidg* writes themselves are also non-blocking (O_NONBLOCK), for
+the same reason: write() to a HID gadget character device can block if
+the USB host isn't promptly polling/consuming that endpoint's queue. A
+modern OS's HID stack does this reliably, but a BIOS/UEFI's minimal USB
+stack may not (confirmed: mouse input froze the whole daemon, keyboard
+included, specifically while the target was in its BIOS, and was fine
+once it booted into Windows) -- with a blocking fd, that single stalled
+write would freeze the entire single-threaded loop exactly like the AP
+commands used to. A dropped report under those conditions just means a
+skipped mouse update, not a frozen daemon.
 """
 
 import json
@@ -32,6 +49,7 @@ import signal
 import struct
 import subprocess
 import sys
+import threading
 import time
 
 import serial
@@ -68,7 +86,15 @@ def load_gadget_info(retries=50, delay=0.1):
 
 
 class HidKeyboard:
-    def __init__(self, path):
+    def __init__(self, fd, path):
+        # fd is opened once, for the daemon's whole lifetime, with
+        # buffering=0 (raw, unbuffered I/O) -- opening the HID gadget
+        # character device is not cheap (the kernel function driver does
+        # real setup work on every open()), and re-opening it for every
+        # single report was adding significant, very noticeable latency to
+        # mouse movement in particular, since a fast mouse flick can emit
+        # several reports per event. path is kept only for logging.
+        self.fd = fd
         self.path = path
         self.modifiers = 0
         self.held_keys = []  # ordered list of up to MAX_HELD_KEYS usage IDs
@@ -98,50 +124,96 @@ class HidKeyboard:
     def _write_report(self):
         keys = self.held_keys + [0] * (MAX_HELD_KEYS - len(self.held_keys))
         report = bytes([self.modifiers & 0xFF, 0] + keys[:MAX_HELD_KEYS])
-        _write_hid_report(self.path, report)
+        _write_hid_report(self.fd, self.path, report)
+
+    def close(self):
+        try:
+            self.fd.close()
+        except OSError:
+            pass
 
 
 class HidMouse:
-    def __init__(self, path):
+    """Absolute pointer (touchscreen-style), not a relative-motion mouse --
+    x/y are positions in [0, protocol.MOUSE_ABSOLUTE_MAX], matching the
+    gadget's HID report descriptor (pi/gadget-setup.sh). The client
+    computes where a click landed as a fraction of its own displayed video
+    frame, bundles it with the current button bitmask, and sends both
+    together as one MOUSE_STATE frame -- set_state() writes ONE atomic
+    report reflecting both. Position and buttons used to be split across
+    two separate frames/writes (a move, then a distinct button-down); that
+    was a real, confirmed bug -- unreliable clicks specifically when the
+    position didn't need to change (a real HID absolute pointer always
+    reports a complete position+button snapshot per sample, never splits
+    them), while dragging worked fine since every motion sample already
+    changed the position. See protocol.py's MOUSE_STATE comment."""
+
+    def __init__(self, fd, path):
+        self.fd = fd
         self.path = path
         self.buttons = 0
+        # Default to center so a stray button event before the first
+        # position update (shouldn't happen given the client always sends
+        # position before a click) doesn't pin the cursor to a corner.
+        self.x = protocol.MOUSE_ABSOLUTE_MAX // 2
+        self.y = protocol.MOUSE_ABSOLUTE_MAX // 2
 
-    def button_down(self, mask):
-        self.buttons |= mask
-        self._write_report(0, 0, 0)
-
-    def button_up(self, mask):
-        self.buttons &= ~mask
-        self._write_report(0, 0, 0)
-
-    def move(self, dx, dy):
-        # HID report deltas are signed bytes (-127..127); split a wider
-        # move into as many reports as needed.
-        while dx != 0 or dy != 0:
-            step_dx = max(-127, min(127, dx))
-            step_dy = max(-127, min(127, dy))
-            dx -= step_dx
-            dy -= step_dy
-            self._write_report(step_dx, step_dy, 0)
+    def set_state(self, x, y, buttons):
+        self.x = x
+        self.y = y
+        self.buttons = buttons
+        self._write_report()
 
     def scroll(self, amount):
-        self._write_report(0, 0, amount)
+        self._write_report(wheel=amount)
 
     def release_all_buttons(self):
         self.buttons = 0
-        self._write_report(0, 0, 0)
+        self._write_report()
 
-    def _write_report(self, dx, dy, wheel):
-        report = struct.pack("<Bbbb", self.buttons & 0xFF, dx, dy, wheel)
-        _write_hid_report(self.path, report)
+    def _write_report(self, wheel=0):
+        report = struct.pack("<BHHb", self.buttons & 0xFF, self.x, self.y, wheel)
+        _write_hid_report(self.fd, self.path, report)
+
+    def close(self):
+        try:
+            self.fd.close()
+        except OSError:
+            pass
 
 
-def _write_hid_report(path, report_bytes):
-    try:
-        with open(path, "wb") as f:
-            f.write(report_bytes)
-    except OSError as e:
-        log.warning("failed to write HID report to %s: %s", path, e)
+HID_WRITE_RETRIES = 5
+HID_WRITE_RETRY_DELAY_SECONDS = 0.002
+
+
+def _write_hid_report(fd, path, report_bytes):
+    """The fd is O_NONBLOCK (see _open_hidg_nonblock) so a host that isn't
+    polling at all can't block the daemon forever -- but that same
+    non-blocking mode means two reports written back-to-back faster than
+    the gadget endpoint's small queue can drain (exactly what a plain
+    click does: an absolute-position report immediately followed by a
+    button-down report, with no gap between them) can hit a transient
+    EAGAIN even though the host is polling completely normally. Retrying a
+    few times with a tiny delay covers that normal case -- confirmed:
+    without this, a quick click's position report would land but the
+    button-down report right behind it would occasionally get dropped
+    silently, moving the target's cursor without ever clicking, while
+    dragging (whose motion reports naturally have gaps between them) was
+    unaffected. Still bounded (~10ms worst case) so a genuinely
+    non-polling host (e.g. a BIOS/UEFI screen) can't freeze the daemon."""
+    for attempt in range(HID_WRITE_RETRIES):
+        try:
+            fd.write(report_bytes)
+            return
+        except BlockingIOError:
+            if attempt == HID_WRITE_RETRIES - 1:
+                log.warning("dropped HID report to %s: endpoint still busy after %d retries",
+                            path, HID_WRITE_RETRIES)
+                return
+            time.sleep(HID_WRITE_RETRY_DELAY_SECONDS)
+        except OSError as e:
+            log.warning("failed to write HID report to %s: %s", path, e)
+            return
 
 
 class StorageController:
@@ -216,33 +288,66 @@ class WifiApController:
 
     def set_enabled(self, enabled):
         """Runs wifi-ap-toggle.sh on/off. Raises RuntimeError with a short
-        message on failure (script missing, non-zero exit, or timeout)."""
+        message on failure (script missing, non-zero exit, or timeout).
+
+        Deliberately does NOT use subprocess.run(timeout=...): that only
+        kills the *direct* child (bash) on timeout, not any grandchild it
+        spawned (nmcli, hostapd, ...); if one of those is left holding the
+        captured stdout/stderr pipes open, the read blocks forever no
+        matter what timeout was requested. start_new_session=True puts the
+        whole script in its own process group so a timeout can kill that
+        entire group, not just bash."""
         if not self.is_installed():
             raise RuntimeError("Wi-Fi AP not installed (run install-webui.sh on the Pi)")
 
         mode = "on" if enabled else "off"
+        proc = subprocess.Popen(
+            [self.TOGGLE_SCRIPT, mode],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            start_new_session=True,
+        )
         try:
-            result = subprocess.run(
-                [self.TOGGLE_SCRIPT, mode],
-                capture_output=True, text=True, timeout=self.TOGGLE_TIMEOUT_SECONDS,
-            )
+            stdout, stderr = proc.communicate(timeout=self.TOGGLE_TIMEOUT_SECONDS)
         except subprocess.TimeoutExpired:
-            raise RuntimeError("timed out switching Wi-Fi AP mode")
+            try:
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            proc.communicate()  # reap now that the whole group is dead
+            raise RuntimeError("timed out switching Wi-Fi AP mode (killed hung process group)")
 
-        if result.returncode != 0:
-            message = (result.stderr or result.stdout or "unknown error").strip()
+        if proc.returncode != 0:
+            message = (stderr or stdout or "unknown error").strip()
             raise RuntimeError(message[:200])
+
+
+def _open_hidg_nonblock(path):
+    """O_NONBLOCK so a write() that can't complete immediately (host not
+    polling the endpoint) raises BlockingIOError instead of blocking --
+    see the module docstring. _write_hid_report already catches OSError
+    (BlockingIOError is a subclass), so no other code needs to change."""
+    fd = os.open(path, os.O_WRONLY | os.O_NONBLOCK)
+    return os.fdopen(fd, "wb", buffering=0)
 
 
 class Daemon:
     def __init__(self):
         info = load_gadget_info()
-        self.keyboard = HidKeyboard(info["hidg_keyboard"])
-        self.mouse = HidMouse(info["hidg_mouse"])
+        # buffering=0: raw, unbuffered binary I/O -- every .write() call is
+        # an immediate syscall, with no Python-level buffer that could hold
+        # a report back until it happens to fill up.
+        keyboard_fd = _open_hidg_nonblock(info["hidg_keyboard"])
+        mouse_fd = _open_hidg_nonblock(info["hidg_mouse"])
+        self.keyboard = HidKeyboard(keyboard_fd, info["hidg_keyboard"])
+        self.mouse = HidMouse(mouse_fd, info["hidg_mouse"])
         self.storage = StorageController(info["lun0_file_attr"], info["isos_dir"])
         self.wifi_ap = WifiApController()
         self.parser = protocol.FrameParser()
         self.ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0.1, exclusive=True)
+        # AP commands run on background threads (see module docstring), so
+        # replies can now arrive from either the main loop or one of those
+        # threads -- serialize access to the one shared serial handle.
+        self._send_lock = threading.Lock()
         self.running = True
 
     def run(self):
@@ -268,6 +373,8 @@ class Daemon:
             self.mouse.release_all_buttons()
         except Exception:
             pass
+        self.keyboard.close()
+        self.mouse.close()
         self.ser.close()
 
     def _send_startup_state(self):
@@ -277,10 +384,27 @@ class Daemon:
             self._send(protocol.encode_iso_ejected())
 
     def _send(self, frame_bytes):
-        try:
-            self.ser.write(frame_bytes)
-        except serial.SerialException as e:
-            log.warning("serial write failed: %s", e)
+        with self._send_lock:
+            try:
+                self.ser.write(frame_bytes)
+            except serial.SerialException as e:
+                log.warning("serial write failed: %s", e)
+
+    def _run_ap_async(self, frame_type, action):
+        """Runs an AP-related action (enable/disable/status-check) on a
+        background thread, then replies. These shell out to
+        wifi-ap-toggle.sh/systemctl, which can legitimately take a few
+        seconds -- or, if something upstream hangs, far longer than its
+        nominal timeout (see WifiApController.set_enabled and the module
+        docstring). Never run this inline on the main loop: keyboard/mouse
+        would freeze along with it for however long that turns out to be."""
+        def worker():
+            try:
+                action()
+                self._send(protocol.encode_ap_status(self.wifi_ap.is_enabled()))
+            except Exception as e:
+                self._send(protocol.encode_error(frame_type, str(e)))
+        threading.Thread(target=worker, daemon=True).start()
 
     def _handle_frame(self, frame_type, payload):
         p = protocol
@@ -289,13 +413,9 @@ class Daemon:
                 self.keyboard.key_down(payload[0])
             elif frame_type == p.KEY_UP:
                 self.keyboard.key_up(payload[0])
-            elif frame_type == p.MOUSE_MOVE:
-                dx, dy = p.decode_mouse_move(payload)
-                self.mouse.move(dx, dy)
-            elif frame_type == p.MOUSE_DOWN:
-                self.mouse.button_down(payload[0])
-            elif frame_type == p.MOUSE_UP:
-                self.mouse.button_up(payload[0])
+            elif frame_type == p.MOUSE_STATE:
+                x, y, buttons = p.decode_mouse_state(payload)
+                self.mouse.set_state(x, y, buttons)
             elif frame_type == p.MOUSE_SCROLL:
                 self.mouse.scroll(struct.unpack("b", payload)[0])
             elif frame_type == p.LIST_ISOS:
@@ -312,19 +432,11 @@ class Daemon:
                 self.storage.eject()
                 self._send(p.encode_iso_ejected())
             elif frame_type == p.AP_ENABLE:
-                try:
-                    self.wifi_ap.set_enabled(True)
-                    self._send(p.encode_ap_status(self.wifi_ap.is_enabled()))
-                except RuntimeError as e:
-                    self._send(p.encode_error(frame_type, str(e)))
+                self._run_ap_async(frame_type, lambda: self.wifi_ap.set_enabled(True))
             elif frame_type == p.AP_DISABLE:
-                try:
-                    self.wifi_ap.set_enabled(False)
-                    self._send(p.encode_ap_status(self.wifi_ap.is_enabled()))
-                except RuntimeError as e:
-                    self._send(p.encode_error(frame_type, str(e)))
+                self._run_ap_async(frame_type, lambda: self.wifi_ap.set_enabled(False))
             elif frame_type == p.AP_STATUS_QUERY:
-                self._send(p.encode_ap_status(self.wifi_ap.is_enabled()))
+                self._run_ap_async(frame_type, lambda: None)
             elif frame_type == p.PING:
                 self._send(p.encode_pong())
             else:

@@ -99,15 +99,34 @@ python client.py --serial-port COM5 --capture-index 1
   Linux/Mac: `/dev/ttyUSB0`-style)
 - `--capture-index`: your HDMI-capture device's OpenCV index (omit to
   auto-scan)
+- `--capture-width` / `--capture-height` (default `1920`x`1080`) /
+  `--capture-fourcc`: without an explicit width/height, some capture cards
+  silently negotiate a lower-detail mode despite still reporting the same
+  nominal frame size, which looks grainy/blurry -- requesting an explicit
+  mode fixes it. Pass `0` for width/height to not request a specific one.
+  See Troubleshooting if 1920x1080 isn't your capture card's native mode.
 - `--baud`: must match `pi/daemon.py` (default `460800` on both ends)
 - `--debug`: prints every key/mouse event and Pi reply to the terminal
 
+On Windows, `client.py` opens the capture device via DirectShow rather than
+OpenCV's default Media Foundation backend, and marks the process
+DPI-aware -- both fix issues that otherwise show up as "looks fine in OBS,
+grainy/blurry here" (see Troubleshooting).
+
 ### Controls
 
+- The window is resizable (drag an edge/corner, maximize, etc.). The video
+  always keeps its own aspect ratio and letterboxes/pillarboxes into
+  whatever space is left -- it's never stretched to fill the window.
 - Click into the video window, then type normally -- keystrokes go to the
   target whenever the window has focus.
-- **F9** toggles mouse capture (relative mouse input to the target).
-  While off, your real cursor is free to use the menu bar.
+- The mouse works like a touchscreen, not a captured relative pointer:
+  click or drag anywhere in the video area to move the target's cursor to
+  that position and click/drag there. Left/middle/right buttons all work.
+  Scrolling forwards the wheel at the target's current cursor position.
+  Your real cursor is never hidden or grabbed -- it's always free to also
+  use the menu bar, since clicks are routed by whether they land above or
+  below the menu bar strip, not by any mode switch.
 - **F11** pastes clipboard text onto the target, character by character.
 - **Ctrl+Shift+F1..F5**: Ctrl+Alt+Del, Alt+Tab, Alt+F4, Win+R, Win+D.
 - **Storage** menu: lists ISOs on the Pi's SD card (queried live from the
@@ -169,3 +188,162 @@ sudo /opt/kvmdongle/wifi-ap-toggle.sh off   # back to normal Wi-Fi
   to ~5s; if it never shows up, check `journalctl -u kvmdongle-daemon` for
   an `ERROR` reply (e.g. filename typo) -- the client's Storage menu also
   surfaces the error text.
+- **Can't catch the target's BIOS/UEFI entry key (e.g. F1) by mashing it
+  right after a reboot, even though everything works fine once the OS
+  boots**: confirmed in practice -- if the Pi is powered parasitically
+  from the target (against the PWR IN advice above), the target's own
+  reboot cuts the Pi's power too, so the whole KVM dongle reboots right
+  alongside it and obviously can't forward anything until it's booted
+  back up, which takes far longer than the BIOS-entry window stays open.
+  It can look like a software timing/reconnect issue since a serial
+  session might still appear "open" right up until the moment power cuts,
+  but the fix is purely physical: give the Pi its own dedicated,
+  always-on power source, independent of the target machine's USB ports.
+- **Video looks grainy/compressed at higher resolutions, but fine in
+  OBS**: two separate things can cause this, and `client.py` already
+  addresses both by default, but if it's still off:
+  - *Windows DPI scaling*: apps that don't declare DPI-awareness get
+    bitmap-stretched by Windows to match your display's scale factor
+    (125%/150%/etc, common on laptop screens), which blurs everything --
+    OBS is DPI-aware and never gets this treatment. `client.py` sets the
+    `SDL_WINDOWS_DPI_AWARENESS` environment variable before `pygame.init()`
+    so SDL registers awareness through its own mechanism; if it's somehow
+    not taking effect, check your display scaling under Windows Settings >
+    Display. (Don't call Windows' `SetProcessDpiAwareness()` directly
+    instead -- that was tried first and caused mouse clicks to land in the
+    wrong place, see below.)
+  - *Capture format negotiation*: without an explicit width/height
+    request, some capture cards silently fall back to a lower-detail mode
+    at open time despite still reporting the same nominal frame size --
+    confirmed on at least one cheap capture card, where requesting
+    1920x1080 explicitly fixed it even though the device was already
+    "reporting" 1920x1080 by default. `client.py` now requests
+    1920x1080 by default for exactly this reason; if your capture card's
+    native mode is something else, override with `--capture-width`/
+    `--capture-height` (and `--capture-fourcc` if needed, e.g. `MJPG`).
+- **Mouse movement feels laggy**: this was a real bug, fixed in two
+  places -- `pi/daemon.py` used to open/close `/dev/hidg1` on every single
+  HID report (expensive on a USB gadget character device, and mouse
+  movement generates far more reports than keyboard input), and
+  `client.py` used to call the capture device's blocking read directly in
+  the same loop that polls keyboard/mouse input, so any capture hiccup
+  delayed input forwarding too. Both are now decoupled (persistent file
+  descriptor on the Pi, background capture thread on the laptop). If
+  lag is still noticeable, check whether it's specifically video-capture
+  hiccups by watching `--debug` output timestamps against actual mouse
+  movement.
+- **After upgrading, mouse clicks land in the wrong place / do nothing**:
+  the mouse changed from a relative captured pointer to an absolute
+  touchscreen-style one, which needed a different HID report shape on the
+  gadget's mouse function (`pi/gadget-setup.sh`). A gadget that's already
+  bound with the old shape won't pick up the new one on its own --
+  re-run `sudo ./install.sh` on the Pi and reboot.
+- **Every click lands in the same spot (often the bottom-right corner,
+  toggling minimize/restore-all on Windows targets)**: this was a real bug
+  -- an earlier build called Windows' `SetProcessDpiAwareness()` directly
+  for the DPI-scaling fix above, which desynced SDL's idea of the window's
+  coordinate space from Windows' actual (scaled) coordinates, so every
+  mouse event's position came out scaled relative to the window's real
+  pixel size -- clamped by `map_click_to_target()` into the video rect's
+  corner every time. Fixed by using the `SDL_WINDOWS_DPI_AWARENESS`
+  environment variable instead, which lets SDL handle DPI awareness
+  through its own internal, self-consistent path.
+- **After a while idle (e.g. waiting for the target to reboot/POST),
+  keys/clicks stop reaching the target -- terminal shows repeated
+  `[serial error] WriteFile failed ... 'The device does not recognize the
+  command.'`, fixed by restarting `client.py`**: this was a real bug --
+  Windows can put an idle USB-serial adapter to sleep (USB selective
+  suspend), and the first read/write after it wakes can fail with a stale
+  handle error that never recovered on its own; the reader thread used to
+  die permanently on the first such error too, silently dropping every Pi
+  reply from then on. Both read and write paths now reopen the port and
+  retry automatically, and `client.py` sends a lightweight keepalive
+  (reusing the existing `PING`/`PONG` frames) whenever the link's been
+  idle for 2+ seconds, so Windows shouldn't consider the port idle enough
+  to suspend in the first place. If it still happens, you can also disable
+  USB selective suspend for the adapter directly: Device Manager -> Ports
+  (COM & LPT) -> your adapter -> Properties -> Power Management -> untick
+  "Allow the computer to turn off this device to save power" (also check
+  this on the USB Root Hub it's plugged into, since suspension can happen
+  at the hub level too).
+- **Clicking any Storage/Network menu item (or sometimes just opening a
+  dropdown) permanently freezes keyboard/mouse -- a client restart doesn't
+  fix it, only restarting `kvmdongle-daemon` on the Pi does**: this was a
+  real bug in `pi/daemon.py`. The daemon is single-threaded, and the AP
+  enable/disable/status-check commands used to run inline, shelling out
+  to `wifi-ap-toggle.sh`/`systemctl` with a nominal timeout -- but
+  `subprocess.run(timeout=...)` only kills the *direct* child on timeout,
+  not any grandchild it spawned (`nmcli`, `hostapd`, ...); if one of those
+  was left holding the captured stdout/stderr pipes open, the read
+  blocked forever regardless of the timeout, freezing the daemon's entire
+  read-parse-handle loop -- keyboard and mouse included -- until it was
+  restarted. (Once the daemon is actually wedged like that, every
+  *subsequent* click looks like it "causes" the freeze too, since nothing
+  is being processed anymore -- the real trigger is specifically an AP
+  status check or enable/disable.) Fixed two ways: AP commands now run on
+  a background thread, so they can never block keyboard/mouse no matter
+  how long they take or whether they hang outright; and
+  `WifiApController.set_enabled()` now runs the toggle script in its own
+  process group and kills the *whole group* on timeout, so a hang gets
+  cleaned up instead of just having its effects contained.
+- **Mouse input freezes the whole session (keyboard included) specifically
+  while the target is showing BIOS/UEFI, but is fine once it's booted into
+  the OS**: this was a real bug in `pi/daemon.py`. HID report writes to
+  `/dev/hidg*` went straight to a blocking file descriptor; `write()` to a
+  USB HID gadget character device can block if the host isn't promptly
+  polling/consuming that endpoint, and a BIOS/UEFI's minimal USB stack is
+  much more likely to do that than a full OS. Since the daemon is
+  single-threaded, one stalled mouse write froze the entire read-parse-
+  handle loop, keyboard included, until the daemon was restarted. Fixed
+  by opening the `/dev/hidg*` file descriptors `O_NONBLOCK`, so a write
+  that can't complete immediately raises instead of blocking -- the
+  existing error handling already just logs and drops that one report.
+- **Client crashes outright with `Fatal Python error: pygame_parachute:
+  Segmentation Fault`, usually during a burst of serial errors (e.g.
+  right after a target reboot)**: this was a real, serious bug --
+  `client.py`'s serial reconnect logic (added to fix the USB-suspend
+  issue above) only locked its own close-and-reopen sequence, not the
+  actual read/write calls. That left a real race: the background reader
+  thread could be mid-`read()` on the port at the exact moment the write
+  path closed it out from under it while reopening. On Windows, pyserial's
+  overlapped-I/O structures get torn down by `close()`, and touching them
+  from a read that was still in flight on another thread corrupted memory
+  badly enough to crash the whole process, not just raise a catchable
+  exception. Fixed by guarding every single touch of the serial handle --
+  reads, writes, and reopens alike -- with one lock, and by never holding
+  that lock through a blocking read (the read loop only ever reads bytes
+  it already confirmed are waiting, sleeping outside the lock otherwise),
+  so a reopen is never stuck waiting behind a long read either.
+- **Opening a Storage/Network dropdown and clicking an item sends that
+  click to the target machine instead of activating the item**: this was
+  a real bug introduced by the touchscreen mouse redesign. `client.py`
+  used to route every click purely by `y < MENU_HEIGHT` (top strip vs.
+  video area), but an *open* dropdown's items are drawn below that strip
+  -- so clicking one fell into "video area" and got forwarded to the
+  target instead of ever reaching the menu. Fixed by trying the menu bar
+  first for left-clicks (it knows its own actual extent, dropdown
+  included) and only forwarding to the target if it says the click wasn't
+  its.
+- **A plain click moves the target's cursor to the right spot but doesn't
+  actually click -- drag works fine, and clicking somewhere new is more
+  reliable than clicking where the cursor already is**: this was a real,
+  deeper bug than it first looked. Position and buttons used to travel as
+  two separate frames/writes (an absolute-position report, immediately
+  followed by a distinct button-down report) -- but a real HID absolute
+  pointer always reports a complete position+button snapshot in a single
+  sample, never splits them across two independently-timed reports. A
+  short retry-with-backoff on the HID write (still in place, and still
+  useful as defense-in-depth against a genuinely busy endpoint) helped but
+  didn't fully fix it, and the "same position is less reliable" pattern
+  pointed at the real issue: clicking without moving sends a position
+  report identical to the one already in effect, immediately followed by
+  a button-only report -- and something in that gap (host-side duplicate-
+  report handling, endpoint queue timing, or both) made the pair
+  unreliable specifically when nothing about the position changed.
+  Dragging was unaffected since every motion sample already changes the
+  position. Properly fixed by combining position and buttons into one
+  `MOUSE_STATE` frame/report sent atomically -- see `protocol.py`'s
+  `MOUSE_STATE` comment for the full explanation. This needs the same
+  `sudo ./install.sh` + restart-the-daemon step as the mouse-descriptor
+  change earlier, since it's a protocol change between `client.py` and
+  `pi/daemon.py`.

@@ -24,9 +24,7 @@ SYNC_BYTE = 0xAA
 # Laptop -> Pi
 KEY_DOWN = 0x01
 KEY_UP = 0x02
-MOUSE_MOVE = 0x03
-MOUSE_DOWN = 0x04
-MOUSE_UP = 0x05
+MOUSE_STATE = 0x03
 MOUSE_SCROLL = 0x06
 LIST_ISOS = 0x10
 MOUNT_ISO = 0x11
@@ -37,7 +35,6 @@ AP_DISABLE = 0x15
 AP_STATUS_QUERY = 0x16
 
 # Pi -> Laptop
-ACK = 0x80
 ERROR = 0x81
 ISO_LIST = 0x82
 ISO_MOUNTED = 0x83
@@ -45,11 +42,35 @@ ISO_EJECTED = 0x84
 PONG = 0x85
 AP_STATUS = 0x86
 
-# Matches USB HID usage-page-0x07 button bit positions used in the
-# MOUSE_DOWN/MOUSE_UP payload byte.
+# Matches USB HID usage-page-0x07 button bit positions used in
+# MOUSE_STATE's buttons byte.
 MOUSE_LEFT = 0x01
 MOUSE_RIGHT = 0x02
 MOUSE_MIDDLE = 0x04
+
+# The mouse is an ABSOLUTE pointer (touchscreen-style, not a relative
+# capture) -- MOUSE_STATE's x/y are each in [0, MOUSE_ABSOLUTE_MAX], a
+# fraction of the way across the target's whole screen, matching the
+# gadget's HID report descriptor (pi/gadget-setup.sh, Logical Maximum
+# 0x7FFF -- the same convention QEMU's usb-tablet device uses). The
+# target's own OS maps that fraction onto its actual screen resolution,
+# whatever that is -- the client never needs to know the target's real
+# resolution, only where a click landed within the displayed video frame.
+#
+# MOUSE_STATE bundles position AND buttons into ONE frame/report rather
+# than sending them separately (position, then a distinct button-down):
+# a real HID absolute pointer reports a complete snapshot -- position and
+# button state together -- in a single sample, not as two independently-
+# timed events. Splitting them into two writes was a real, confirmed bug:
+# a plain click (no cursor movement needed) sends a position report
+# identical to the one already in effect immediately followed by a
+# button-only report, and something in that gap (host-side duplicate-
+# report handling, endpoint queue timing, or both) made the click
+# unreliable specifically when the position didn't change -- exactly
+# reproducible by clicking at the same spot repeatedly. Dragging was
+# unaffected because each motion sample already changed the position.
+# Sending one atomic report removes the gap entirely.
+MOUSE_ABSOLUTE_MAX = 0x7FFF
 
 # HID keyboard usage IDs for the modifier keys (Ctrl/Shift/Alt/GUI x L/R).
 # These occupy usage IDs 0xE0-0xE7 on the real HID keyboard usage page,
@@ -142,18 +163,21 @@ def encode_key_event(down, usage_id):
     return encode(KEY_DOWN if down else KEY_UP, bytes([usage_id & 0xFF]))
 
 
-def encode_mouse_move(dx, dy):
-    dx = max(-32768, min(32767, int(dx)))
-    dy = max(-32768, min(32767, int(dy)))
-    return encode(MOUSE_MOVE, struct.pack("<hh", dx, dy))
+def encode_mouse_state(x_frac, y_frac, buttons):
+    """x_frac/y_frac: 0.0-1.0 fraction of the way across the target's
+    screen. buttons: bitmask of MOUSE_LEFT/RIGHT/MIDDLE currently held.
+    Position is clamped and scaled to the HID report's logical range here,
+    so the Pi daemon can pass the resulting ints straight into the report
+    with no further conversion. See the MOUSE_STATE comment above for why
+    position and buttons travel together in one frame."""
+    x = round(max(0.0, min(1.0, x_frac)) * MOUSE_ABSOLUTE_MAX)
+    y = round(max(0.0, min(1.0, y_frac)) * MOUSE_ABSOLUTE_MAX)
+    return encode(MOUSE_STATE, struct.pack("<HHB", x, y, buttons & 0xFF))
 
 
-def decode_mouse_move(payload):
-    return struct.unpack("<hh", payload)
-
-
-def encode_mouse_button(down, button_mask):
-    return encode(MOUSE_DOWN if down else MOUSE_UP, bytes([button_mask & 0xFF]))
+def decode_mouse_state(payload):
+    """Returns (x, y, buttons); x/y already in [0, MOUSE_ABSOLUTE_MAX]."""
+    return struct.unpack("<HHB", payload)
 
 
 def encode_mouse_scroll(amount):
@@ -203,10 +227,6 @@ def encode_ping():
 
 def encode_pong():
     return encode(PONG)
-
-
-def encode_ack(acked_type):
-    return encode(ACK, bytes([acked_type & 0xFF]))
 
 
 def encode_error(failed_type, message):
