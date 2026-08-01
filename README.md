@@ -496,3 +496,37 @@ sudo /opt/kvmdongle/wifi-ap-toggle.sh off   # back to normal Wi-Fi
   fires regardless of how much other traffic is flowing, guaranteeing a
   reply-soliciting ping at least every `KEEPALIVE_INTERVAL_SECONDS`
   no matter what.
+- **On macOS, `client.py` can't talk to the Pi at all -- it opens the
+  serial port without error but never receives anything, whether the port
+  is auto-detected or given explicitly**: two separate real issues,
+  usually both present together on affected adapters.
+  - **`/dev/tty.*` vs `/dev/cu.*`**: macOS lists two device paths per
+    USB-serial adapter. `/dev/tty.*` is the legacy "callin" device that
+    blocks waiting for a carrier-detect signal most USB-serial adapters
+    never assert (they're not real modems) -- it can appear to open fine
+    and then never actually communicate. `list_serial_ports()` now
+    filters out a `/dev/tty.X` entry whenever a matching `/dev/cu.X`
+    counterpart exists (leaving anything with no such counterpart alone,
+    in case it's something else entirely), so auto-detection shouldn't
+    hit this -- but if you're passing `--serial-port` explicitly, make
+    sure it's the `/dev/cu.*` path, not `/dev/tty.*`.
+  - **`in_waiting` unreliable on some macOS USB-serial drivers**: a real,
+    confirmed bug, independent of the above. `SerialLink._read_loop` used
+    to check `self.ser.in_waiting` before deciding whether to `read()` --
+    on at least one macOS + USB-serial-adapter combination, `in_waiting`
+    stayed stuck at `0` forever even though bytes were genuinely arriving
+    (confirmed with `screen` on the very same port, which showed the
+    Pi's replies correctly), so a read gated on it never actually read
+    anything, ever, on that platform. `in_waiting`/`FIONREAD` reliability
+    on macOS is a known pyserial weak spot in general. Fixed by reading
+    unconditionally -- `self.ser.read(256)`, bounded only by the port's
+    own short read timeout -- so it no longer depends on `in_waiting`
+    being accurate at all, on any platform.
+  - Also confirmed while debugging this: some USB-serial adapters' macOS
+    drivers don't reliably support high "custom" baud rates -- one
+    tested adapter topped out at `230400` even though `460800` (this
+    project's default) worked fine on the same hardware under Windows/
+    Linux. If the Pi's replies still don't show up in `screen` at
+    `460800` on a `/dev/cu.*` port, try a lower `--baud` (matching
+    `BAUD_RATE` in `pi/daemon.py`, restarting `kvmdongle-daemon` after
+    changing it) before assuming something else is wrong.
