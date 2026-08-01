@@ -92,13 +92,33 @@ for reference -- its UI is what `client.py` is modeled on.
 
 ```
 pip install -r requirements.txt
+python client.py
+```
+
+Both `--serial-port` and `--capture-index` are optional -- omitted,
+`client.py` probes every detected serial port with a `PING` and uses
+whichever one actually replies (not by matching hardware IDs -- the
+USB-TTL adapter is generic, off-the-shelf hardware with no identity
+specific to this Pi, so an actual protocol handshake is the only reliable
+way to tell it apart from any other serial device that happens to be
+plugged in), and picks the first capture device that opens. You can still
+pin both explicitly:
+```
 python client.py --serial-port COM5 --capture-index 1
 ```
 
 - `--serial-port`: the USB-TTL adapter's port (Windows: `COM5`-style;
-  Linux/Mac: `/dev/ttyUSB0`-style)
+  Linux/Mac: `/dev/ttyUSB0`-style) -- omit to auto-detect
 - `--capture-index`: your HDMI-capture device's OpenCV index (omit to
-  auto-scan)
+  auto-scan; the app prints each detected index's resolved name on
+  startup, useful for figuring out `--capture-name-hint` below)
+- `--capture-name-hint`: substring to match against a capture device's
+  name when auto-selecting (e.g. a chipset name from your capture card),
+  so the right one gets picked even with a webcam also present.
+  Best-effort: real device names are resolved on Windows (via the
+  optional `pygrabber` package) and Linux (`/sys/class/video4linux`,
+  no extra dependency); without a match, or on other platforms, falls
+  back to the first device that opens, same as omitting it entirely.
 - `--capture-width` / `--capture-height` (default `1920`x`1080`) /
   `--capture-fourcc`: without an explicit width/height, some capture cards
   silently negotiate a lower-detail mode despite still reporting the same
@@ -154,15 +174,38 @@ grainy/blurry here" (see Troubleshooting).
   different USB-TTL adapter. The new port is only switched over once it's
   confirmed to open successfully; the old one is left untouched (and only
   closed after the switch) if it doesn't.
-- **Terminal** menu ("Open Pi Shell" / **F12** to close): opens a
-  full-screen terminal overlay running a real `bash` shell on the Pi over
-  the same serial link -- interactive programs, colors, and cursor
-  movement all work, so it looks and feels like an SSH session even
-  though it's carried entirely over the KB/mouse/storage serial cable
-  (no network involved). While it's open, keyboard and mouse input goes
-  to the shell instead of the target machine; press **F12** at any time
-  to close it and resume normal KVM control. Requires the `pyte` package
-  (see `requirements.txt`) -- the menu item says so if it's missing.
+- **Terminal** menu ("Open Pi Shell"): opens a real `bash` shell running
+  on the Pi, over the same serial link, in its **own separate window** --
+  not an overlay on the video, so it has its own taskbar entry and can be
+  moved/resized/closed independently, and never steals keyboard/mouse
+  focus from the main KVM window or vice versa. Interactive programs,
+  colors, and cursor movement all work, so it looks and feels like an SSH
+  session even though it's carried entirely over the KB/mouse/storage
+  serial cable (no network involved). Press **F12** or just close the
+  window to end the session; if the Pi's shell exits on its own (e.g. you
+  typed `exit`), the window shows that and waits for you to close it,
+  same as a real terminal emulator noticing its process ended. Requires
+  the `pyte` package (see `requirements.txt`) -- the menu item says so if
+  it's missing.
+- The **Terminal** menu also has three power commands for the Pi itself,
+  each of which shells out to `systemctl` on the Pi:
+  - **Restart Daemon** -- one click, restarts just `kvmdongle-daemon`
+    (e.g. if it's gotten into a stuck state). Reconnects on its own within
+    a couple seconds; keyboard/mouse/storage briefly stop responding
+    while it does.
+  - **Reboot Pi** / **Shutdown Pi** -- click once to arm (the label
+    changes to "...(click again to confirm)" and the dropdown stays open
+    so the same item is right there under your cursor), then click it
+    again within ~4 seconds to actually send it; otherwise it just
+    disarms itself. Arming one disarms the other. A Pi Zero W has no
+    remote power button, so **Shutdown Pi** means someone has to
+    physically unplug/replug its power to bring it back -- there's no
+    undo.
+  
+  None of these three get a "success" reply -- whatever would send one
+  (the daemon process, or the whole machine) is exactly what's about to
+  go away, so watch the connection-status light instead: it goes red
+  once the Pi stops responding, same as any other disconnect.
 - **Session > Quit** or the window's close button to exit.
 
 Expect **1-5 seconds** after mounting/ejecting before the target's OS
@@ -371,12 +414,85 @@ sudo /opt/kvmdongle/wifi-ap-toggle.sh off   # back to normal Wi-Fi
   `sudo ./install.sh` + restart-the-daemon step as the mouse-descriptor
   change earlier, since it's a protocol change between `client.py` and
   `pi/daemon.py`.
-- **Terminal menu says "Open Pi Shell" but nothing happens, or the Pi
-  never replies once it's open**: the Terminal feature added new frame
-  types to `protocol.py` (`SHELL_OPEN`/`SHELL_INPUT`/`SHELL_OUTPUT`/etc.)
-  that a Pi still running an older `pi/daemon.py` doesn't know about --
-  same as any other protocol change, this needs `sudo ./install.sh` +
-  a daemon restart on the Pi to pick up. Separately, the menu item itself
-  says "(install pyte)" instead of "Open Pi Shell" if the `pyte` package
-  isn't installed in the laptop's Python environment -- `pip install
-  pyte` (or `pip install -r requirements.txt`) fixes that.
+- **Terminal menu says "Open Pi Shell" but nothing happens, or the shell
+  window opens but the Pi never replies**: the Terminal feature added new
+  frame types to `protocol.py` (`SHELL_OPEN`/`SHELL_INPUT`/`SHELL_OUTPUT`/
+  etc.) that a Pi still running an older `pi/daemon.py` doesn't know about
+  -- same as any other protocol change, this needs `sudo ./install.sh` +
+  a daemon restart on the Pi to pick up. Separately, an extra
+  "(requires: pip install pyte)" line shows up under the menu item if the
+  `pyte` package isn't installed in the laptop's Python environment --
+  `pip install pyte` (or `pip install -r requirements.txt`) fixes that;
+  `client.py` spawns a second process (`terminal_window.py`) for the shell
+  window itself (pygame can only own one window per process), so that
+  process needs the same venv/interpreter as `client.py` -- run both from
+  the same `pip install -r requirements.txt` environment.
+- **Restart Daemon / Reboot Pi / Shutdown Pi menu items do nothing**: if
+  `pi/daemon.py` is older than these frame types (`RESTART_DAEMON`/
+  `REBOOT_PI`/`SHUTDOWN_PI`), it silently drops them -- run `sudo
+  ./install.sh` on the Pi (and reconnect, for a reboot/shutdown, since
+  there's nothing to restart into if the Pi itself is still on the old
+  version) and check `journalctl -u kvmdongle-daemon` right after clicking
+  one: a current daemon logs `invoking: systemctl ...` for every attempt,
+  and a `WARNING: unknown frame type` if it's genuinely out of date --
+  either tells you which case you're in. If it's not a version issue: this
+  was also a real bug in `client.py` for **Reboot Pi**/**Shutdown Pi**
+  specifically (not Restart Daemon, which is a single click) -- `MenuBar`
+  closes its dropdown after every item click, so arming the action (the
+  first click) immediately hid the very item you needed to click again to
+  confirm, unless you noticed the label change and explicitly reopened
+  the menu. Fixed by letting an item's handler return a truthy value to
+  keep the dropdown open specifically on the arming click, so the second,
+  confirming click can land on the same spot right away.
+- **Mouse doesn't work on Linux target machines (keyboard is fine), and/or
+  keyboard+mouse randomly stop working with `dmesg` showing repeating
+  `usb ... reset high-speed USB device ... using xhci_hcd` and `device
+  descriptor read/64, error -110`, sometimes forever (only a full
+  replug/reboot recovers it) -- confirmed on an HP EliteDesk, a Lenovo
+  ThinkCentre, and a Dell PowerEdge R530, never seen on Windows targets**:
+  this was a real, serious bug (actually two symptoms of the same cause),
+  and cable/power-supply/USB-hub swaps do NOT fix it. Several wrong
+  theories were ruled out along the way (USB autosuspend, an empty
+  mass-storage LUN, high-speed signal margin) before finding the actual
+  cause: the mouse's HID report descriptor in `gadget-setup.sh` was
+  exactly 64 bytes -- precisely `wMaxPacketSize0` for a high-speed control
+  endpoint. A descriptor length that's an exact multiple of the control
+  endpoint's max packet size needs a zero-length packet to terminate its
+  `GET_DESCRIPTOR` transfer correctly, and some combination of the Pi's
+  `dwc2` peripheral controller and the host's `xhci_hcd` mishandles that
+  specific case -- 100% reproducibly, regardless of which other functions
+  were present or the mouse's interface number (the keyboard's descriptor,
+  63 bytes, never a multiple of 64, was never affected). Worse, it didn't
+  just break the mouse (`usbhid: can't add hid device: -110`) -- it left
+  the shared control endpoint in a bad enough state to also break mass
+  storage's own later control requests (e.g. `GET_MAX_LUN`), which is why
+  removing either the mouse *or* mass storage alone made the other work
+  fine, and why an empty-vs-populated LUN made no difference (a red
+  herring -- the LUN's contents were never the problem). Fixed by padding
+  the mouse's report descriptor by one byte (widening `Usage Maximum(5)`
+  from its 1-byte encoding to the equivalent, functionally identical
+  2-byte encoding) so it's 65 bytes instead of 64 -- see the comment
+  directly above the mouse's `report_desc` in `gadget-setup.sh` for the
+  full writeup. Needs the usual `sudo ./install.sh` (or manually
+  redeploying `gadget-setup.sh` to `/opt/kvmdongle/`) + `sudo systemctl
+  restart kvmdongle-gadget` to pick up on an already-set-up Pi.
+- **The connection-status light goes red during heavy, continuous
+  keyboard/mouse use, even though everything is clearly still working**:
+  this was a real bug in `client.py`. `is_connected()` only reflects the
+  last time something was *received* from the Pi, but ordinary
+  `KEY_DOWN`/`KEY_UP`/`MOUSE_STATE`/`MOUSE_SCROLL` frames never get a
+  reply -- only a periodic keepalive `PING` (answered with a `PONG`) keeps
+  that clock fresh during otherwise-quiet stretches. That keepalive used
+  to be gated solely on how long it had been since the last *write* of
+  any kind -- which sounds reasonable, but continuous keyboard/mouse
+  activity is itself nonstop one-way write traffic, so that clock never
+  went idle and the ping -- the only thing that could ever solicit a
+  reply -- never fired. The indicator would flip red under exactly the
+  busiest, most obviously-still-connected traffic pattern. Fixed by
+  splitting it into two independent checks in `send_keepalive_if_idle()`:
+  the original write-idle check (still there, for genuinely idle periods,
+  to stop Windows USB selective suspend from kicking in) plus a second
+  check gated on time since *we last sent a ping* specifically, which
+  fires regardless of how much other traffic is flowing, guaranteeing a
+  reply-soliciting ping at least every `KEEPALIVE_INTERVAL_SECONDS`
+  no matter what.

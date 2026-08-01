@@ -33,6 +33,9 @@ PING = 0x13
 AP_ENABLE = 0x14
 AP_DISABLE = 0x15
 AP_STATUS_QUERY = 0x16
+RESTART_DAEMON = 0x17
+REBOOT_PI = 0x18
+SHUTDOWN_PI = 0x19
 SHELL_OPEN = 0x20
 SHELL_CLOSE = 0x21
 SHELL_INPUT = 0x22
@@ -229,6 +232,26 @@ def encode_ap_disable():
 
 def encode_ap_status_query():
     return encode(AP_STATUS_QUERY)
+
+
+# RESTART_DAEMON/REBOOT_PI/SHUTDOWN_PI have no reply of their own: whatever
+# would send one (the daemon process, for a restart; the whole machine, for
+# reboot/shutdown) is exactly what's going away moments after receiving the
+# command. The client has no way to confirm success beyond noticing the
+# connection drop it already shows via the connection indicator -- there's
+# nothing to wait for on this end. The daemon only ever replies with ERROR,
+# and only for the synchronous, fast failure of not being able to launch
+# the underlying systemctl command at all.
+def encode_restart_daemon():
+    return encode(RESTART_DAEMON)
+
+
+def encode_reboot_pi():
+    return encode(REBOOT_PI)
+
+
+def encode_shutdown_pi():
+    return encode(SHUTDOWN_PI)
 
 
 def encode_ap_status(enabled):

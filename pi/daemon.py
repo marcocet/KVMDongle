@@ -15,6 +15,10 @@ commands off the GPIO UART control link from the laptop and:
   - handles AP_ENABLE / AP_DISABLE / AP_STATUS_QUERY by shelling out to
     wifi-ap-toggle.sh (phase 2, only present if install-webui.sh has been
     run), replying with the resulting AP_STATUS or an ERROR.
+  - handles RESTART_DAEMON / REBOOT_PI / SHUTDOWN_PI by firing off the
+    matching systemctl command and otherwise doing nothing -- there's no
+    reply to send on success, since whatever would send it (this process,
+    or the whole machine) is exactly what's about to go away.
   - handles SHELL_OPEN / SHELL_CLOSE / SHELL_INPUT / SHELL_RESIZE by
     running an actual bash session in a real PTY (see ShellSession),
     streaming its output back as SHELL_OUTPUT frames -- a genuine shell,
@@ -522,6 +526,32 @@ class Daemon:
             except serial.SerialException as e:
                 log.warning("serial write failed: %s", e)
 
+    def _trigger_system_action(self, frame_type, argv):
+        """Fires off a systemctl action that's expected to end this process
+        (restarting the daemon) or the whole machine (reboot/poweroff) --
+        deliberately fire-and-forget (Popen, not run()/communicate()):
+        waiting here would block the main loop for however long systemd's
+        transaction takes, and there is nothing left on this end to
+        synchronize with once it's underway. The only reply this can ever
+        send is an ERROR, and only for the synchronous, fast failure of
+        not being able to launch the command at all (e.g. systemctl
+        missing) -- a real restart/reboot/shutdown gives no success reply,
+        since whatever would send one is exactly what's going away.
+
+        Logs on both the attempt and the launch itself (unlike most other
+        handlers here, which only log on failure) -- there's genuinely no
+        other way to tell "this ran and systemctl silently did nothing" apart
+        from "an old daemon.py never recognized this frame type at all" from
+        journalctl otherwise, since a stale daemon's unknown-frame-type path
+        used to log at DEBUG (see _handle_frame) and this had no success-path
+        log line either -- both looked like total silence."""
+        log.info("invoking: %s", " ".join(argv))
+        try:
+            subprocess.Popen(argv)
+        except OSError as e:
+            log.warning("could not launch %s: %s", argv[0], e)
+            self._send(protocol.encode_error(frame_type, str(e)))
+
     def _run_ap_async(self, frame_type, action):
         """Runs an AP-related action (enable/disable/status-check) on a
         background thread, then replies. These shell out to
@@ -569,6 +599,12 @@ class Daemon:
                 self._run_ap_async(frame_type, lambda: self.wifi_ap.set_enabled(False))
             elif frame_type == p.AP_STATUS_QUERY:
                 self._run_ap_async(frame_type, lambda: None)
+            elif frame_type == p.RESTART_DAEMON:
+                self._trigger_system_action(frame_type, ["systemctl", "restart", "kvmdongle-daemon"])
+            elif frame_type == p.REBOOT_PI:
+                self._trigger_system_action(frame_type, ["systemctl", "reboot"])
+            elif frame_type == p.SHUTDOWN_PI:
+                self._trigger_system_action(frame_type, ["systemctl", "poweroff"])
             elif frame_type == p.SHELL_OPEN:
                 self.shell.open()
             elif frame_type == p.SHELL_CLOSE:
@@ -581,7 +617,16 @@ class Daemon:
             elif frame_type == p.PING:
                 self._send(p.encode_pong())
             else:
-                log.debug("unknown frame type 0x%02X", frame_type)
+                # WARNING, not DEBUG: this is the only signal that a stale
+                # daemon.py (missing a protocol.py update, e.g. a laptop
+                # that's ahead of the Pi on RESTART_DAEMON/REBOOT_PI/
+                # SHUTDOWN_PI) is silently dropping frames it doesn't
+                # recognize -- at DEBUG level (the default log level here is
+                # INFO) this would never show up in journalctl at all, making
+                # "the button doesn't seem to do anything" nearly impossible
+                # to distinguish from a real failure further down the line.
+                log.warning("unknown frame type 0x%02X (payload %r) -- is the Pi's protocol.py/daemon.py "
+                            "out of date relative to the laptop's client.py? try sudo ./install.sh", frame_type, payload)
         except Exception as e:
             log.exception("error handling frame type 0x%02X", frame_type)
             self._send(p.encode_error(frame_type, str(e)))

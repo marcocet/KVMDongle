@@ -74,12 +74,31 @@ printf '\x05\x01\x09\x06\xA1\x01\x05\x07\x19\xE0\x29\xE7\x15\x00\x25\x01\x75\x01
 # a 3-byte relative report, which this device doesn't implement, and BIOS
 # screens essentially never need mouse input anyway (only the keyboard
 # function needs to stay boot-capable, for POST/BIOS text entry).
+#
+# The "Usage Maximum (5)" item below is deliberately encoded in its 2-byte
+# form (\x2A\x05\x00) instead of the equivalent, more natural 1-byte form
+# (\x29\x05) -- confirmed root cause of a real, serious bug: this report
+# descriptor is otherwise exactly 64 bytes, which is precisely
+# wMaxPacketSize0 for a high-speed control endpoint. A descriptor length
+# that's an exact multiple of the endpoint's max packet size needs a
+# zero-length packet to terminate its GET_DESCRIPTOR data stage correctly,
+# and some combination of dwc2/this host's xhci_hcd mishandles that case --
+# the keyboard's descriptor (63 bytes, never a multiple of 64) never hit
+# this, but the mouse's did, 100% reproducibly on every affected host
+# regardless of which other functions were present. Worse, it didn't just
+# break the mouse itself (usbhid: can't add hid device: -110) -- it left
+# the shared control endpoint in a bad enough state to also break mass
+# storage's own later control requests (e.g. GET_MAX_LUN), which is why
+# removing the mouse function alone made mass storage start working too.
+# This one padding byte avoids the whole edge case: same 6-byte report
+# shape (report_length is unchanged), same "Usage Maximum (5)" meaning,
+# just spelled with one more descriptor byte so the total is 65, not 64.
 mkdir -p functions/hid.usb1
 echo 0 > functions/hid.usb1/protocol
 echo 0 > functions/hid.usb1/subclass
 echo 6 > functions/hid.usb1/report_length
 echo 1 > functions/hid.usb1/no_out_endpoint
-printf '\x05\x01\x09\x02\xA1\x01\x09\x01\xA1\x00\x05\x09\x19\x01\x29\x05\x15\x00\x25\x01\x95\x05\x75\x01\x81\x02\x95\x01\x75\x03\x81\x03\x05\x01\x09\x30\x09\x31\x16\x00\x00\x26\xFF\x7F\x75\x10\x95\x02\x81\x02\x09\x38\x15\x81\x25\x7F\x75\x08\x95\x01\x81\x06\xC0\xC0' \
+printf '\x05\x01\x09\x02\xA1\x01\x09\x01\xA1\x00\x05\x09\x19\x01\x2A\x05\x00\x15\x00\x25\x01\x95\x05\x75\x01\x81\x02\x95\x01\x75\x03\x81\x03\x05\x01\x09\x30\x09\x31\x16\x00\x00\x26\xFF\x7F\x75\x10\x95\x02\x81\x02\x09\x38\x15\x81\x25\x7F\x75\x08\x95\x01\x81\x06\xC0\xC0' \
     > functions/hid.usb1/report_desc
 
 # --- Mass storage: single read-only CD-ROM-style LUN. Nothing mounted at
