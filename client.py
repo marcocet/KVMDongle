@@ -1145,7 +1145,7 @@ def main():
                          help="force a capture pixel format/codec, e.g. MJPG or YUY2 -- some capture "
                               "cards fall back to a more heavily compressed mode at higher resolutions "
                               "unless a specific format is requested")
-    parser.add_argument("--baud", type=int, default=460800)
+    parser.add_argument("--baud", type=int, default=230400)
     parser.add_argument("--debug", action="store_true", help="print each key/mouse event to the terminal")
     args = parser.parse_args()
 
