@@ -26,7 +26,7 @@ Usage:
     --capture-index  the OpenCV device index for your capture card
                       (try 0, 1, 2... if unsure; the app also prints
                       available indices on startup)
-    --baud           serial baud rate, must match pi/daemon.py (default 115200)
+    --baud           serial baud rate, must match pi/daemon.py (default 460800)
     --debug          print each key/mouse event to the terminal
 
 Controls:
@@ -921,27 +921,42 @@ class TerminalWindow:
         """The Pi's bash session ended on its own (e.g. the user typed
         `exit`) -- tell the window so it can show that and let the user
         close it in their own time, same as a real terminal emulator
-        noticing its child process exited."""
+        noticing its child process exited.
+
+        Deliberately does NOT wait for or terminate the child here, unlike
+        close() -- this was a real bug: forcibly killing the window ~1s
+        after telling it the session closed defeated the entire point of
+        showing the banner and letting the user close it themselves. The
+        child process is left to run independently; _read_loop's own EOF
+        handling (already idempotent) cleans up once it eventually exits
+        on its own, whenever the user actually closes that window."""
         if not self.is_open:
             return
-        self._end(tell_child=True)
-
-    def close(self):
-        """The user asked (Terminal menu) to end the session."""
-        if not self.is_open:
-            return
-        self.link.send_shell_close()
-        self._end(tell_child=True)
-
-    def _end(self, tell_child):
         self.is_open = False
-        if tell_child and self.proc is not None and self.proc.poll() is None:
+        if self.proc is not None and self.proc.poll() is None:
             try:
                 self.proc.stdin.write(protocol.encode_shell_closed())
                 self.proc.stdin.flush()
             except (BrokenPipeError, OSError):
                 pass
+        self.proc = None  # not ours to track/wait on anymore -- let it linger
+
+    def close(self):
+        """The user asked (Terminal menu) to end the session right now --
+        unlike notify_closed(), this really does end the window, since the
+        user explicitly asked for it to close rather than the Pi's shell
+        ending unprompted."""
+        if not self.is_open:
+            return
+        self.link.send_shell_close()
+        self.is_open = False
         if self.proc is not None:
+            if self.proc.poll() is None:
+                try:
+                    self.proc.stdin.write(protocol.encode_shell_closed())
+                    self.proc.stdin.flush()
+                except (BrokenPipeError, OSError):
+                    pass
             try:
                 self.proc.wait(timeout=1)
             except subprocess.TimeoutExpired:
@@ -994,7 +1009,7 @@ def main():
                          help="force a capture pixel format/codec, e.g. MJPG or YUY2 -- some capture "
                               "cards fall back to a more heavily compressed mode at higher resolutions "
                               "unless a specific format is requested")
-    parser.add_argument("--baud", type=int, default=115200)
+    parser.add_argument("--baud", type=int, default=460800)
     parser.add_argument("--debug", action="store_true", help="print each key/mouse event to the terminal")
     args = parser.parse_args()
 

@@ -476,3 +476,26 @@ sudo /opt/kvmdongle/wifi-ap-toggle.sh off   # back to normal Wi-Fi
   fires regardless of how much other traffic is flowing, guaranteeing a
   reply-soliciting ping at least every `KEEPALIVE_INTERVAL_SECONDS`
   no matter what.
+- **`client.py` and `pi/daemon.py` can't communicate at all -- the
+  connection light never turns green, no menu ever gets a reply**: check
+  that `--baud` actually matches on both ends before anything else. This
+  project moved off the default 115200 to 460800 early on (see "Setting
+  up the Pi" and `pi/daemon.py`'s `BAUD_RATE`) after freeing up the Pi's
+  good UART from Bluetooth -- if `client.py`'s `--baud` default or your
+  own `--baud` argument doesn't match `pi/daemon.py`'s `BAUD_RATE`, every
+  byte on the wire is misread relative to its actual bit timing, so the
+  checksummed frame parser on both ends never resolves anything into a
+  valid frame -- total, silent communication failure, not a partial or
+  intermittent one.
+- **The Pi shell window shows "[session closed]" (the Pi's bash exited on
+  its own) but then vanishes on its own ~1 second later instead of
+  waiting for you to close it**: this was a real bug in `client.py`.
+  `TerminalWindow.notify_closed()` used to call the exact same
+  wait-then-terminate logic as `close()` (the user explicitly asking to
+  end the session), which meant the window got forcibly killed shortly
+  after showing the "session closed" banner -- directly contradicting the
+  documented point of that banner (let the user notice and close it in
+  their own time, like a real terminal emulator). Fixed by having
+  `notify_closed()` just relay the notice and let the child process keep
+  running independently until the user closes it themselves; only the
+  user-initiated `close()` path still forcibly ends the window.
