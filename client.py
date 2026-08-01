@@ -17,36 +17,17 @@ or grabbed, so there's no mode to toggle.
 
 Requirements:
     pip install pygame opencv-python pyserial pyperclip pyte
-    pip install pygrabber   # Windows only, optional -- see --capture-name-hint
 
 Usage:
-    python client.py
     python client.py --serial-port COM5 --capture-index 1
 
-    Both --serial-port and --capture-index are optional: omitted, the app
-    probes every detected serial port with a PING and uses the first one
-    that actually replies, and picks the first capture device that opens
-    (or the first one matching --capture-name-hint, if given).
-
-    --serial-port      the COM/tty port for the Pi's control link
-                       (Windows: e.g. COM5, Linux/Mac: e.g. /dev/ttyUSB0)
-                       -- auto-detected via a PING/PONG handshake if
-                       omitted, not by matching hardware IDs (the USB-TTL
-                       adapter itself is generic, off-the-shelf hardware
-                       with no identity specific to this Pi)
-    --capture-index    the OpenCV device index for your capture card
-                       (try 0, 1, 2... if unsure; the app also prints
-                       each detected index's resolved name on startup)
-    --capture-name-hint  substring to match against a capture device's
-                       name when auto-selecting, e.g. a chipset name from
-                       your capture card, so it's picked correctly even
-                       with a webcam also present. Best-effort: real
-                       names are available on Windows (via pygrabber) and
-                       Linux (/sys/class/video4linux); without pygrabber,
-                       or on other platforms, falls back to the first
-                       device that opens, same as when omitted entirely.
-    --baud             serial baud rate, must match pi/daemon.py (default 460800)
-    --debug            print each key/mouse event to the terminal
+    --serial-port    the COM/tty port for the Pi's control link
+                      (Windows: e.g. COM5, Linux/Mac: e.g. /dev/ttyUSB0)
+    --capture-index  the OpenCV device index for your capture card
+                      (try 0, 1, 2... if unsure; the app also prints
+                      available indices on startup)
+    --baud           serial baud rate, must match pi/daemon.py (default 115200)
+    --debug          print each key/mouse event to the terminal
 
 Controls:
     - Click into the video window to give it focus, then type normally.
@@ -119,17 +100,6 @@ try:
     import pyte
 except ImportError:
     pyte = None
-
-# Windows-only, and only needed for --capture-name-hint matching -- OpenCV
-# itself has no portable way to get a capture device's actual name/vendor
-# info, so this is the one bit of real device identity available on
-# Windows (via DirectShow's device enumeration). Absence just means
-# name-hint matching silently has nothing to match against on this
-# platform (see get_capture_device_name).
-try:
-    from pygrabber.dshow_graph import FilterGraph
-except ImportError:
-    FilterGraph = None
 
 MENU_HEIGHT = 28
 MIN_WINDOW_WIDTH = 320
@@ -296,14 +266,9 @@ class SerialLink:
     get torn down by close(), and touching them from a read that was still
     in flight on another thread corrupted state badly enough to segfault
     the whole process, not just raise a catchable exception. The read
-    loop also never blocks the lock for long -- it reads a bounded chunk
-    with the port's own short read timeout (see _read_loop), rather than
-    checking in_waiting first and only reading a confirmed-available
-    count the way an earlier version did (in_waiting/FIONREAD reliability
-    on some macOS USB-serial drivers is a real, confirmed weak spot -- it
-    stayed stuck at 0 forever on at least one such adapter even though
-    bytes were genuinely arriving, so a read gated on it never actually
-    read anything) -- either way, a reopen (which does need to block
+    loop also never blocks while holding the lock -- it only ever reads
+    bytes it already confirmed are waiting via in_waiting, sleeping
+    outside the lock otherwise -- so a reopen (which does need to block
     briefly) is never stuck waiting behind a long blocking read."""
 
     KEEPALIVE_INTERVAL_SECONDS = 2.0
@@ -344,28 +309,11 @@ class SerialLink:
             self.ser = serial.Serial(self.port, self.baud, timeout=0.05)
 
     def _read_loop(self):
-        """Reads via a plain, bounded blocking read() -- self.ser.read(256)
-        returns as soon as up to 256 bytes are available, or after at most
-        the port's own `timeout` (0.05s, set at construction) if fewer
-        ever arrive, so this still never blocks _io_lock for long (same
-        guarantee an earlier version got from checking in_waiting first
-        and only reading a confirmed-available count).
-
-        Deliberately does NOT check in_waiting before reading, unlike an
-        earlier version -- confirmed real bug: on at least one macOS +
-        USB-serial-adapter combination, in_waiting stayed stuck at 0
-        forever even though bytes were genuinely arriving (confirmed via
-        `screen` on the same port showing the Pi's replies just fine),
-        so a read gated on "in_waiting says there's something" never
-        actually read anything, ever. in_waiting/FIONREAD reliability on
-        macOS USB-serial drivers is a known pyserial weak spot in
-        general, not specific to this project's protocol -- reading
-        unconditionally, bounded only by the port's own read timeout,
-        works the same everywhere and no longer depends on it at all."""
         while not self._stop.is_set():
             with self._io_lock:
                 try:
-                    data = self.ser.read(256)
+                    n = self.ser.in_waiting
+                    data = self.ser.read(n) if n else b""
                 except serial.SerialException as e:
                     print(f"[serial error] {e} -- reopening port")
                     try:
@@ -375,7 +323,8 @@ class SerialLink:
                         time.sleep(1)  # avoid busy-looping if the port is truly gone
                     continue
             if not data:
-                continue  # already waited up to the port's read timeout inside read()
+                time.sleep(0.005)
+                continue
             for frame in self._parser.feed(data):
                 self._last_receive_time = time.monotonic()
                 self.incoming.put(frame)
@@ -491,31 +440,6 @@ class SerialLink:
         self.ser.close()
 
 
-def get_capture_device_name(index):
-    """Best-effort friendly name for capture device `index`, or None if
-    unavailable (unsupported platform, index out of range, etc.) --
-    --capture-name-hint matching just falls back to "any device that
-    opens" wherever this returns None. OpenCV has no portable API for
-    this, so it's resolved per-platform: DirectShow's device enumeration
-    on Windows (via pygrabber, matching cv2.CAP_DSHOW's own enumeration
-    order), or a plain sysfs read on Linux -- nothing built-in on macOS."""
-    if sys.platform == "win32":
-        if FilterGraph is None:
-            return None
-        try:
-            names = FilterGraph().get_input_devices()
-            return names[index]
-        except Exception:
-            return None
-    if sys.platform.startswith("linux"):
-        try:
-            with open(f"/sys/class/video4linux/video{index}/name") as f:
-                return f.read().strip()
-        except OSError:
-            return None
-    return None
-
-
 def find_capture_devices(max_index=5, skip_index=None):
     """Probes indices 0..max_index-1 by briefly opening each one. skip_index
     (the currently in-use device, if any) is reported as present without
@@ -537,69 +461,8 @@ def find_capture_devices(max_index=5, skip_index=None):
 def list_serial_ports():
     """Unlike capture devices, enumerating serial ports doesn't require
     opening them at all (just a registry/sysfs query), so there's no
-    equivalent risk to sidestep for the currently-active one.
-
-    On macOS, comports() typically lists BOTH a /dev/tty.X and a
-    /dev/cu.X path for the same physical USB-serial adapter. /dev/tty.*
-    is the legacy "callin" device that blocks waiting for a
-    carrier-detect signal most USB-serial adapters never actually assert
-    (they're not real modems) -- it can open without error and then
-    never actually communicate, a real, confirmed failure mode for this
-    project specifically. /dev/cu.* ("callout") is the one that's
-    actually meant to be used here. Filtered out whenever a matching
-    /dev/cu.X counterpart also exists, so auto-detection never wastes
-    time on (or gets stuck on) the one that's likely to misbehave --
-    entries with no /dev/cu.* counterpart are left alone, in case
-    they're something else entirely."""
-    ports = [p.device for p in serial.tools.list_ports.comports()]
-    if sys.platform == "darwin":
-        cu_suffixes = {p[len("/dev/cu."):] for p in ports if p.startswith("/dev/cu.")}
-        ports = [p for p in ports
-                 if not (p.startswith("/dev/tty.") and p[len("/dev/tty."):] in cu_suffixes)]
-    return ports
-
-
-def probe_serial_port(port, baud, timeout=1.0):
-    """Briefly opens `port`, sends a PING, and returns True if any valid
-    frame at all (a PONG, or the daemon's unsolicited startup ISO_MOUNTED/
-    ISO_EJECTED push) arrives before `timeout`. This is how --serial-port
-    gets auto-detected -- deliberately NOT by matching the USB-TTL
-    adapter's vendor/product ID or serial number, since that's generic
-    off-the-shelf hardware (FTDI/CP210x/CH340/etc.) with no identity
-    specific to this project. A fixed VID:PID can't reliably tell "the
-    adapter wired to our Pi" apart from any other identical adapter model
-    plugged in for something else, or a coincidentally similar one -- an
-    actual protocol handshake is the only thing that's genuinely specific
-    to our own daemon on the other end."""
-    try:
-        ser = serial.Serial(port, baud, timeout=timeout)
-    except serial.SerialException:
-        return False
-    try:
-        parser = protocol.FrameParser()
-        ser.write(protocol.encode_ping())
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
-            n = ser.in_waiting
-            if n:
-                if parser.feed(ser.read(n)):
-                    return True
-            else:
-                time.sleep(0.02)
-        return False
-    finally:
-        ser.close()
-
-
-def find_serial_port(baud, candidates=None):
-    """Probes each detected serial port in turn (or `candidates`, if
-    given) and returns the first one that actually replies -- see
-    probe_serial_port. Returns None if nothing replied."""
-    for port in (candidates if candidates is not None else list_serial_ports()):
-        print(f"Probing {port}...")
-        if probe_serial_port(port, baud):
-            return port
-    return None
+    equivalent risk to sidestep for the currently-active one."""
+    return [p.device for p in serial.tools.list_ports.comports()]
 
 
 def open_capture(index, width=None, height=None, fourcc=None):
@@ -1117,22 +980,8 @@ def main():
     _fix_windows_dpi_scaling()
 
     parser = argparse.ArgumentParser(description="Laptop crash cart: video + keyboard/mouse/storage bridge")
-    parser.add_argument("--serial-port", default=None,
-                         help="COM port / tty for the Pi's control link. If omitted, every detected "
-                              "serial port is probed with a PING and the first one that actually "
-                              "replies is used -- not matched by vendor/product ID or serial number, "
-                              "since the USB-TTL adapter is generic hardware with no identity specific "
-                              "to this project; an actual protocol reply is the only reliable signal.")
+    parser.add_argument("--serial-port", required=True, help="COM port / tty for the Pi's control link")
     parser.add_argument("--capture-index", type=int, default=None, help="OpenCV capture device index")
-    parser.add_argument("--capture-name-hint", default=None,
-                         help="case-insensitive substring to match against a capture device's name "
-                              "when auto-selecting (e.g. a chipset name from your capture card), so the "
-                              "right one gets picked even if a webcam is also present. Best-effort: real "
-                              "device names are resolved on Windows (via pygrabber) and Linux (/sys/class/"
-                              "video4linux); without a match, or on other platforms, falls back to the "
-                              "first device that opens, same as when this isn't given at all. Run once "
-                              "without it to see each detected device's resolved name printed, to find "
-                              "the right value.")
     parser.add_argument("--capture-width", type=int, default=1920,
                          help="request this capture width (default 1920 -- without an explicit "
                               "width/height request, some capture cards silently fall back to a "
@@ -1145,7 +994,7 @@ def main():
                          help="force a capture pixel format/codec, e.g. MJPG or YUY2 -- some capture "
                               "cards fall back to a more heavily compressed mode at higher resolutions "
                               "unless a specific format is requested")
-    parser.add_argument("--baud", type=int, default=230400)
+    parser.add_argument("--baud", type=int, default=115200)
     parser.add_argument("--debug", action="store_true", help="print each key/mouse event to the terminal")
     args = parser.parse_args()
 
@@ -1156,23 +1005,8 @@ def main():
         if not devices:
             print("No capture devices found. Specify one with --capture-index.")
             sys.exit(1)
-        names = {idx: get_capture_device_name(idx) for idx in devices}
-        for idx in devices:
-            print(f"  [{idx}] {names[idx]!r}")
-
-        chosen = None
-        if args.capture_name_hint:
-            hint = args.capture_name_hint.lower()
-            for idx in devices:
-                if names[idx] and hint in names[idx].lower():
-                    chosen = idx
-                    break
-            if chosen is None:
-                print(f"No device name matched hint {args.capture_name_hint!r} -- falling back to the first device found")
-        if chosen is None:
-            chosen = devices[0]
-        print(f"Using device {chosen}.")
-        capture_index = chosen
+        print(f"Found devices at indices: {devices}. Using {devices[0]}.")
+        capture_index = devices[0]
 
     print(f"Opening capture device index {capture_index}...")
     cap = open_capture(capture_index, args.capture_width, args.capture_height, args.capture_fourcc)
@@ -1183,18 +1017,9 @@ def main():
     print(f"Negotiated capture mode: {describe_negotiated_mode(cap)} -- compare against OBS's "
           f"device properties for this same capture card if video quality looks off")
 
-    serial_port = args.serial_port
-    if serial_port is None:
-        print("Probing serial ports for the Pi...")
-        serial_port = find_serial_port(args.baud)
-        if serial_port is None:
-            print("No serial port replied. Specify one with --serial-port.")
-            sys.exit(1)
-        print(f"Found the Pi on {serial_port}.")
-
-    print(f"Opening serial link on {serial_port} @ {args.baud} baud...")
+    print(f"Opening serial link on {args.serial_port} @ {args.baud} baud...")
     try:
-        link = SerialLink(serial_port, args.baud)
+        link = SerialLink(args.serial_port, args.baud)
     except serial.SerialException as e:
         print(f"Could not open serial port: {e}")
         sys.exit(1)
@@ -1228,7 +1053,7 @@ def main():
     held_target_buttons = 0
 
     video_state = VideoState(capture_index)
-    port_state = PortState(serial_port)
+    port_state = PortState(args.serial_port)
     storage = StorageState()
     network = NetworkState()
     terminal = TerminalWindow(link)

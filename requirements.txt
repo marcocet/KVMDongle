@@ -3,4 +3,3 @@ opencv-python
 pyserial
 pyperclip
 pyte
-pygrabber; sys_platform == "win32"
