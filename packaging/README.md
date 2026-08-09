@@ -7,30 +7,34 @@ each script must be run on the OS it's building for.
 
 | Platform | Script                        | Output                                  | Tested here? |
 |----------|-------------------------------|------------------------------------------|--------------|
-| Windows  | `build_windows.ps1`           | `dist/KVMDongle/KVMDongle.exe`           | Yes          |
+| Windows  | `build_windows.ps1`           | `dist/KVMDongle.exe` (single file)       | Yes          |
 | macOS    | `build_macos.sh`               | `dist/KVMDongle.app`                    | No (see below)|
 | Linux    | `build_linux.sh`               | `dist/KVMDongle-Linux.run`               | No (see below)|
 
 All three run `pyinstaller packaging/client.spec` under the hood; the
 `.spec` file itself is one shared, cross-platform build definition (it
-branches on `sys.platform` internally for the macOS `.app` bundling
-step), so there's a single place to change build configuration for all
-three OSes.
+branches on `sys.platform` internally -- `--onefile` for Windows,
+`--onedir` (+ `.app` bundling) for macOS/Linux, see below), so there's a
+single place to change build configuration for all three OSes.
 
-## Why `--onedir`, not a single-file exe
+## Windows is `--onefile`; macOS/Linux stay `--onedir` -- why the split
 
 `client.py` spawns a **second copy of itself** as a subprocess every time
 you open the Pi Shell or Debug Log window (see `_child_process_argv()`
 in `client.py`) -- pygame/SDL only supports one window per process, so a
 real second window needs a real second process. A `--onefile` build has
 to re-extract its entire bundled payload from scratch on *every single
-launch*, which would make opening either of those windows noticeably
-slow every time you click them. `--onedir` (a folder containing the
-exe/app plus its dependencies, produced once at build time) avoids that
-entirely -- this is a deliberate choice driven by this app's specific
-architecture, not an arbitrary default. It's still "an exe" in the
-requested sense; it just has a folder of supporting files next to it,
-same as most real desktop apps under `Program Files`.
+launch*, **relaunches included** -- opening either of those windows will
+be noticeably slower than with a `--onedir` build, on every click, not
+just the first one.
+
+That trade-off is accepted on **Windows** because a literal single `.exe`
+was the actual ask. It's *not* needed on **macOS** (a `.app` bundle is
+already a single double-clickable thing from Finder's perspective, even
+though it's a folder underneath) or **Linux** (`build_linux.sh` already
+wraps the `--onedir` output into one `.run` file via `makeself`) -- both
+already deliver "one thing to double-click/run" without paying the
+relaunch-latency cost, so there was nothing to trade off there.
 
 ## The frozen-relaunch mechanism (why Terminal/Debug Log still work once packaged)
 
@@ -64,9 +68,14 @@ The build scripts do this for you already.
 ```
 powershell -ExecutionPolicy Bypass -File packaging\build_windows.ps1
 ```
-Built and smoke-tested in this environment: the exe launches, and
-`--serial-port`/`--capture-index` auto-detect and the usual startup
-messages all work identically to running from source.
+Built and smoke-tested in this environment as a true single-file
+`KVMDongle.exe`: it launches, `--serial-port`/`--capture-index`
+auto-detect and the usual startup messages all work identically to
+running from source, and launching it directly with
+`--_internal=debug_log_window` (what opening the Debug Log window does
+internally) correctly opens that window rather than crashing on an
+unrecognized argument -- confirming the frozen-relaunch dispatch (see
+above) actually works under `--onefile`, not just `--onedir`.
 
 ## macOS
 

@@ -1,13 +1,16 @@
 # build_windows.ps1
 #
-# Builds the Windows standalone client: KVMDongle.exe (plus a folder
-# of its dependencies alongside it -- see client.spec's docstring for why
-# this is --onedir, not a single-file exe). Run from anywhere; paths are
-# resolved relative to this script's own location.
+# Builds the Windows standalone client as a single-file KVMDongle.exe --
+# nothing else needed alongside it. See client.spec's docstring for the
+# trade-off this accepts: opening the Pi Shell or Debug Log window
+# relaunches this same exe as a subprocess, and a single-file build has
+# to re-extract its whole bundled payload from scratch on every one of
+# those relaunches, not just the first launch. Run from anywhere; paths
+# are resolved relative to this script's own location.
 #
 #   powershell -ExecutionPolicy Bypass -File packaging\build_windows.ps1
 #
-# Output: dist\KVMDongle\KVMDongle.exe
+# Output: dist\KVMDongle.exe
 
 $ErrorActionPreference = "Stop"
 
@@ -24,5 +27,4 @@ pip install pyinstaller
 Write-Host "[build] running PyInstaller..."
 pyinstaller packaging\client.spec --noconfirm --distpath dist --workpath build
 
-Write-Host "[build] done: dist\KVMDongle\KVMDongle.exe"
-Write-Host "[build] the whole 'dist\KVMDongle' folder is the app -- copy/zip it as a unit, not just the .exe"
+Write-Host "[build] done: dist\KVMDongle.exe"

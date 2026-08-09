@@ -6,13 +6,19 @@ PyInstaller build spec for the KVMDongle laptop client -- produces a
 real, standalone desktop application (no separate Python install needed
 to run it) on whichever OS you build it on.
 
-Built as --onedir (a folder containing the exe/app + its dependencies),
-DELIBERATELY not --onefile: client.py spawns a SECOND COPY OF ITSELF as a
-subprocess every time you open the Pi Shell or Debug Log window (see
-_child_process_argv() in client.py). A --onefile build re-extracts its
-entire bundled payload from scratch on every single launch, which would
-make opening either of those windows noticeably slow every time. --onedir
-pays that extraction cost once, at build time, not on every relaunch.
+Windows builds as a true single-file --onefile exe (dist/KVMDongle.exe,
+nothing else needed alongside it). macOS/Linux stay --onedir (a folder
+PyInstaller then wraps into a single distributable artifact anyway --
+a .app bundle on macOS, a self-extracting .run via makeself on Linux --
+so there was nothing to fix there).
+
+This is a real, known trade-off on Windows specifically: client.py spawns
+a SECOND COPY OF ITSELF as a subprocess every time you open the Pi Shell
+or Debug Log window (see _child_process_argv() in client.py), and a
+--onefile build re-extracts its entire bundled payload from scratch on
+EVERY single launch, relaunches included -- opening either of those
+windows will be noticeably slower than with a --onedir build. Chosen
+anyway because a single .exe is what was actually asked for.
 
 PyInstaller cannot cross-compile -- this must be run ON the OS you're
 building for. Usage (from the repo root):
@@ -20,9 +26,11 @@ building for. Usage (from the repo root):
     pyinstaller packaging/client.spec
 
 Output:
-    dist/KVMDongle/                 (Windows, Linux -- a folder, run the
-                                      .exe or the extensionless binary
-                                      inside it)
+    dist/KVMDongle.exe              (Windows -- single file)
+    dist/KVMDongle/                 (Linux -- a folder, run the
+                                      extensionless binary inside it, or
+                                      use build_linux.sh for a single
+                                      self-extracting .run instead)
     dist/KVMDongle.app/             (macOS)
 """
 
@@ -69,37 +77,64 @@ a = Analysis(  # noqa: F821
 
 pyz = PYZ(a.pure, a.zipped_data)  # noqa: F821
 
-exe = EXE(  # noqa: F821
-    pyz,
-    a.scripts,
-    [],
-    exclude_binaries=True,  # onedir: binaries go through COLLECT below, not into the exe itself
-    name=APP_NAME,
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=False,
-    console=False,  # windowed, no console -- that's what the Debug Log window is for
-)
-
-coll = COLLECT(  # noqa: F821
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    strip=False,
-    upx=False,
-    name=APP_NAME,
-)
-
-if sys.platform == "darwin":
-    app = BUNDLE(  # noqa: F821
-        coll,
-        name=f"{APP_NAME}.app",
-        icon=None,
-        bundle_identifier="com.kvmdongle.app",
-        info_plist={
-            "NSCameraUsageDescription": "Needed to read the HDMI capture device as a video source.",
-            "NSHighResolutionCapable": True,
-        },
+if sys.platform == "win32":
+    # --onefile: binaries/zipfiles/datas go straight into EXE() itself
+    # (exclude_binaries defaults to False) instead of a separate COLLECT
+    # step -- see the module docstring for the relaunch-latency trade-off
+    # this accepts in exchange for a single .exe with nothing beside it.
+    exe = EXE(  # noqa: F821
+        pyz,
+        a.scripts,
+        a.binaries,
+        a.zipfiles,
+        a.datas,
+        [],
+        name=APP_NAME,
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=False,
+        console=False,  # windowed, no console -- that's what the Debug Log window is for
+        runtime_tmpdir=None,  # extract to the OS temp dir (the default) on each run
     )
+else:
+    # --onedir everywhere else: a folder PyInstaller/these scripts then
+    # wrap into a single distributable artifact anyway (a macOS .app
+    # bundle, or a Linux .run via build_linux.sh's makeself step), so
+    # there's no equivalent "single flat file" win to chase here, and
+    # onedir avoids onefile's per-launch extraction cost for the
+    # Terminal/Debug Log windows' repeated self-relaunches.
+    exe = EXE(  # noqa: F821
+        pyz,
+        a.scripts,
+        [],
+        exclude_binaries=True,
+        name=APP_NAME,
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=False,
+        console=False,
+    )
+
+    coll = COLLECT(  # noqa: F821
+        exe,
+        a.binaries,
+        a.zipfiles,
+        a.datas,
+        strip=False,
+        upx=False,
+        name=APP_NAME,
+    )
+
+    if sys.platform == "darwin":
+        app = BUNDLE(  # noqa: F821
+            coll,
+            name=f"{APP_NAME}.app",
+            icon=None,
+            bundle_identifier="com.kvmdongle.app",
+            info_plist={
+                "NSCameraUsageDescription": "Needed to read the HDMI capture device as a video source.",
+                "NSHighResolutionCapable": True,
+            },
+        )
