@@ -985,6 +985,31 @@ class MenuBar:
         return was_open
 
 
+def _child_process_argv(internal_name, script_path):
+    """Builds the subprocess.Popen argv for spawning one of this app's
+    helper windows (terminal_window.py / debug_log_window.py).
+
+    Running from source: sys.executable is a real Python interpreter and
+    the helper .py file sits right next to this one, so spawning it
+    directly works exactly like running any other script.
+
+    Running frozen (PyInstaller etc -- see sys.frozen): sys.executable IS
+    the bundled application itself, not a Python interpreter, and the
+    helper .py files aren't separately runnable once bundled -- there's
+    no "python.exe" left to hand a script to. Instead, the frozen exe
+    relaunches ANOTHER COPY of itself with a hidden internal flag, and
+    the dispatch in this file's `if __name__ == "__main__":` block routes
+    that copy straight into the helper module's own main() before
+    client.py's normal argparse/main() flow ever runs. Skipping this
+    would silently break the Terminal and Debug Log windows the moment
+    this app is packaged -- they'd still "launch," but as an unwanted
+    second copy of the whole main app crashing on an argument it doesn't
+    recognize, not the intended helper window."""
+    if getattr(sys, "frozen", False):
+        return [sys.executable, f"--_internal={internal_name}"]
+    return [sys.executable, script_path]
+
+
 class TerminalWindow:
     """Controller for the Pi-shell terminal, rendered in a genuine,
     separate OS window rather than as an overlay on top of the video --
@@ -1020,7 +1045,7 @@ class TerminalWindow:
             return
         try:
             self.proc = subprocess.Popen(
-                [sys.executable, self.SCRIPT_PATH],
+                _child_process_argv("terminal_window", self.SCRIPT_PATH),
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             )
         except OSError as e:
@@ -1147,7 +1172,8 @@ class DebugLogWindow:
         if self.is_open:
             return
         try:
-            self.proc = subprocess.Popen([sys.executable, self.SCRIPT_PATH], stdin=subprocess.PIPE)
+            self.proc = subprocess.Popen(
+                _child_process_argv("debug_log_window", self.SCRIPT_PATH), stdin=subprocess.PIPE)
         except OSError as e:
             print(f"[debug log] could not launch debug log window: {e}")
             return
@@ -1225,7 +1251,7 @@ def main():
 
     _fix_windows_dpi_scaling()
 
-    parser = argparse.ArgumentParser(description="Laptop crash cart: video + keyboard/mouse/storage bridge")
+    parser = argparse.ArgumentParser(description="KVMDongle laptop client: video + keyboard/mouse/storage bridge")
     parser.add_argument("--serial-port", default=None,
                          help="COM port / tty for the Pi's control link -- omit to auto-select "
                               "the first detected serial port")
@@ -1556,7 +1582,7 @@ def main():
     # closed) link forever. The lambda re-reads `link` fresh on every call.
     menu = MenuBar(w, menus, lambda: link.is_connected())
 
-    pygame.display.set_caption("Crash Cart")
+    pygame.display.set_caption("KVMDongle")
 
     def handle_incoming(frame_type, payload):
         p = protocol
@@ -1760,4 +1786,22 @@ def main():
 
 
 if __name__ == "__main__":
+    # See _child_process_argv()'s docstring: a frozen build (PyInstaller
+    # etc) relaunches ANOTHER COPY of this same exe with one of these
+    # hidden flags instead of spawning terminal_window.py/
+    # debug_log_window.py directly, since sys.executable is the frozen
+    # app itself once packaged, not a real Python interpreter with those
+    # standalone .py files sitting next to it. Checked first, before
+    # argparse or anything else in main() runs, so a relaunched copy goes
+    # straight into the helper module's own main() instead of client.py's.
+    if len(sys.argv) > 1 and sys.argv[1].startswith("--_internal="):
+        _internal_target = sys.argv[1].split("=", 1)[1]
+        if _internal_target == "terminal_window":
+            import terminal_window
+            terminal_window.main()
+        elif _internal_target == "debug_log_window":
+            import debug_log_window
+            debug_log_window.main()
+        sys.exit(0)
+
     main()

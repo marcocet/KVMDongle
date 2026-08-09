@@ -45,9 +45,9 @@ echo 0x0100 > bcdDevice
 echo 0x0200 > bcdUSB
 
 mkdir -p strings/0x409
-echo "kvmdongle0001"  > strings/0x409/serialnumber
-echo "DIY"            > strings/0x409/manufacturer
-echo "KVM Crash Cart" > strings/0x409/product
+echo "kvmdongle0001" > strings/0x409/serialnumber
+echo "DIY"           > strings/0x409/manufacturer
+echo "KVMDongle"     > strings/0x409/product
 
 mkdir -p configs/c.1/strings/0x409
 echo "HID+Storage" > configs/c.1/strings/0x409/configuration

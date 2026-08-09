@@ -1,7 +1,7 @@
 """
 protocol.py
 
-Shared wire protocol for the laptop <-> Raspberry Pi KVM/crash-cart control
+Shared wire protocol for the laptop <-> Raspberry Pi KVMDongle control
 link (the USB-TTL serial link, separate from the Pi's USB OTG port which
 carries HID/mass-storage to the target machine).
 

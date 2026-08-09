@@ -1,6 +1,6 @@
-# KVM / Crash-Cart Dongle
+# KVMDongle
 
-A DIY KVM/crash-cart: an HDMI-capture+VGA dongle handles video (separate,
+**KVMDongle** is a DIY KVM/crash-cart: an HDMI-capture+VGA dongle handles video (separate,
 out of scope here), while a Raspberry Pi Zero W plugged into the target
 machine's USB port emulates a keyboard, mouse, and a read-only CD-ROM
 (backed by an ISO already on the Pi's SD card) -- enough to remote-control
@@ -94,6 +94,10 @@ for reference -- its UI is what `client.py` is modeled on.
 pip install -r requirements.txt
 python client.py
 ```
+Or run it as a real standalone application with no Python install needed
+at all -- see [packaging/](packaging/) for building a Windows `.exe`,
+macOS `.app`, or Linux `.run`.
+
 Both `--serial-port` and `--capture-index` are optional -- omit either (or
 both, as above) to auto-select the first one found, e.g. for running this
 as a standalone, no-arguments application. Pass them explicitly only if
