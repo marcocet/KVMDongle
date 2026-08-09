@@ -17,6 +17,8 @@ or grabbed, so there's no mode to toggle.
 
 Requirements:
     pip install pygame opencv-python pyserial pyperclip pyte
+    Windows only, optional: pip install pygrabber (real capture device
+    names in the Video menu instead of just "Device N")
 
 Usage:
     python client.py
@@ -46,10 +48,16 @@ Controls:
       the target with nothing intercepted first.
     - Use the Video menu to switch capture devices without restarting --
       lists detected indices, marks the active one, and has a Refresh
-      item to re-scan (e.g. after plugging in another capture card).
+      item to re-scan (e.g. after plugging in another capture card). Shows
+      a real device name where available (best-effort, OS-specific --
+      free on Linux, needs `pip install pygrabber` on Windows, not
+      implemented on macOS), else falls back to plain "Device N".
     - Use the Serial Port menu to switch which COM/tty port talks to the
       Pi without restarting -- handy if Windows reassigned the adapter to
-      a different COM number after a reconnect.
+      a different COM number after a reconnect. Shows a real description
+      next to each port where the OS has one (e.g. "USB-SERIAL CH340"),
+      fully portable via pyserial itself -- no extra dependency needed,
+      unlike the Video menu's device names.
     - Use the Storage menu to list ISOs already on the Pi's SD card,
       mount one (exposed to the target as a read-only CD-ROM), or eject
       the current one. The Pi is the source of truth for what's
@@ -97,6 +105,14 @@ try:
     import pyte
 except ImportError:
     pyte = None
+
+# Windows-only, optional: lets the Video menu show real device names
+# (e.g. "Logitech C920") instead of just "Device N" -- OpenCV itself has
+# no portable way to ask for this. See capture_device_names().
+try:
+    from pygrabber.dshow_graph import FilterGraph
+except ImportError:
+    FilterGraph = None
 
 MENU_HEIGHT = 28
 MIN_WINDOW_WIDTH = 320
@@ -448,11 +464,61 @@ def find_capture_devices(max_index=5, skip_index=None):
     return found
 
 
+def capture_device_names():
+    """Best-effort {index: friendly name} mapping for capture devices --
+    OpenCV has no portable API for this, so it's OS-specific and returns
+    {} wherever it's not available (macOS always, Windows without
+    `pip install pygrabber`, or if enumeration fails for any reason).
+    Callers fall back to a plain "Device N" label in that case.
+
+    Windows: pygrabber walks the same DirectShow device list client.py
+    already opens devices through (cv2.CAP_DSHOW), so its indices line up
+    with OpenCV's.
+
+    Linux: V4L2 exposes a name file per device in sysfs, matching the
+    /dev/videoN index OpenCV's V4L2 backend opens directly -- free, no
+    extra dependency needed."""
+    if sys.platform == "win32":
+        if FilterGraph is None:
+            return {}
+        try:
+            return dict(enumerate(FilterGraph().get_input_devices()))
+        except Exception:
+            return {}
+    if sys.platform.startswith("linux"):
+        names = {}
+        v4l2_dir = "/sys/class/video4linux"
+        for entry in os.listdir(v4l2_dir) if os.path.isdir(v4l2_dir) else []:
+            try:
+                index = int(entry.replace("video", ""))
+                with open(f"{v4l2_dir}/{entry}/name") as f:
+                    names[index] = f.read().strip()
+            except (ValueError, OSError):
+                continue
+        return names
+    return {}
+
+
 def list_serial_ports():
     """Unlike capture devices, enumerating serial ports doesn't require
     opening them at all (just a registry/sysfs query), so there's no
     equivalent risk to sidestep for the currently-active one."""
     return [p.device for p in serial.tools.list_ports.comports()]
+
+
+def serial_port_descriptions():
+    """{device: description} for detected serial ports, e.g.
+    "COM5" -> "USB-SERIAL CH340 (COM5)". Unlike capture devices, pyserial
+    already exposes this portably on Windows/Linux/macOS via each OS's own
+    device registry -- no OS-specific code needed here. "n/a" (pyserial's
+    placeholder when a backend has nothing better) is treated as no
+    description, same as an empty one, so callers can fall back to just
+    the bare port path either way."""
+    descriptions = {}
+    for p in serial.tools.list_ports.comports():
+        if p.description and p.description != "n/a":
+            descriptions[p.device] = p.description
+    return descriptions
 
 
 def open_capture(index, width=None, height=None, fourcc=None):
@@ -612,6 +678,7 @@ class VideoState:
     def __init__(self, current_index):
         self.current_index = current_index
         self.available = [current_index]
+        self.names = {}  # {index: friendly name}, best-effort -- see capture_device_names()
         self.error = None
 
 
@@ -623,6 +690,7 @@ class PortState:
     def __init__(self, current_port):
         self.current_port = current_port
         self.available = [current_port]
+        self.descriptions = {}  # {device: description}, best-effort -- see serial_port_descriptions()
         self.error = None
 
 
@@ -1132,6 +1200,11 @@ def main():
     def do_refresh_video_devices():
         video_state.error = None
         video_state.available = find_capture_devices(skip_index=video_state.current_index)
+        # Computed once here (not from video_menu_items() itself, which
+        # _draw_dropdown() calls every single frame the dropdown is open) --
+        # on Windows this spins up a DirectShow FilterGraph, not something
+        # to redo 60 times a second just to draw a label.
+        video_state.names = capture_device_names()
 
     def do_switch_video(new_index):
         nonlocal video
@@ -1158,7 +1231,9 @@ def main():
         else:
             for idx in sorted(video_state.available):
                 marker = "* " if idx == video_state.current_index else "  "
-                items.append((f"{marker}Device {idx}", "", lambda idx=idx: do_switch_video(idx)))
+                name = video_state.names.get(idx)
+                label = f"{marker}Device {idx}" + (f" - {name}" if name else "")
+                items.append((label, "", lambda idx=idx: do_switch_video(idx)))
         items.append(("Refresh", "", do_refresh_video_devices))
         return items
 
@@ -1167,6 +1242,7 @@ def main():
         port_state.available = list_serial_ports()
         if port_state.current_port not in port_state.available:
             port_state.available.append(port_state.current_port)
+        port_state.descriptions = serial_port_descriptions()
 
     def do_switch_serial_port(new_port):
         nonlocal link
@@ -1202,7 +1278,9 @@ def main():
         else:
             for dev in port_state.available:
                 marker = "* " if dev == port_state.current_port else "  "
-                items.append((f"{marker}{dev}", "", lambda dev=dev: do_switch_serial_port(dev)))
+                desc = port_state.descriptions.get(dev)
+                label = f"{marker}{dev}" + (f" - {desc}" if desc else "")
+                items.append((label, "", lambda dev=dev: do_switch_serial_port(dev)))
         items.append(("Refresh", "", do_refresh_serial_ports))
         return items
 

@@ -6,8 +6,8 @@
 | **Session ID** | `b2d8841a-7434-4615-9fcb-f34f5020c07a` |
 | **Working Dir** | `c:\Users\Marco\Documents\GitHub\KVMDongle` |
 | **Started** | 7/29/2026, 2:51:51 PM |
-| **Last Updated** | 8/9/2026, 3:02:48 AM |
-| **Messages** | 2505 |
+| **Last Updated** | 8/9/2026, 3:20:35 AM |
+| **Messages** | 2658 |
 
 ---
 
@@ -42258,6 +42258,2435 @@ All four done:
 4. **Serial port auto-detect**: `--serial-port` is now optional, mirroring how `--capture-index` already works — if omitted, it scans with `list_serial_ports()` and uses the first one found (erroring out clearly if none exist). Running `python client.py` with zero arguments now works, moving you closer to that standalone-app goal.
 
 README and tests updated to match; full suite still green.
+
+
+---
+
+## User <sup>8/9/2026, 3:07:02 AM</sup>
+
+could you give more info in the drop down for video devices? like device name/model or something like that
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:08:31 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:08:31 AM</sup>
+
+Let's check `requirements.txt` and the current `find_capture_devices()`/`VideoState`/`video_menu_items()` implementation before making this change.
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:08:32 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\requirements.txt"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:08:32 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1	pygame
+2	opencv-python
+3	pyserial
+4	pyperclip
+5	pyte
+6
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:08:39 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:08:40 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "class VideoState|def do_refresh_video_devices|def video_menu_items|def find_capture_devices",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:08:40 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+433:def find_capture_devices(max_index=5, skip_index=None):
+606:class VideoState:
+1132:    def do_refresh_video_devices():
+1152:    def video_menu_items():
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:08:43 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 433,
+  "limit": 20
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:08:43 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+433	def find_capture_devices(max_index=5, skip_index=None):
+434	    """Probes indices 0..max_index-1 by briefly opening each one. skip_index
+435	    (the currently in-use device, if any) is reported as present without
+436	    actually being reopened -- some backends won't let you open a device
+437	    twice at once, and even if they would, doing so would risk disrupting
+438	    the live stream just to confirm what we already know is working."""
+439	    found = []
+440	    for i in range(max_index):
+441	        if i == skip_index:
+442	            found.append(i)
+443	            continue
+444	        cap = cv2.VideoCapture(i)
+445	        if cap.isOpened():
+446	            found.append(i)
+447	            cap.release()
+448	    return found
+449	
+450	
+451	def list_serial_ports():
+452	    """Unlike capture devices, enumerating serial ports doesn't require
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:08:47 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 606,
+  "limit": 14
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:08:47 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+606	class VideoState:
+607	    """Tracks which local capture device is active and which others were
+608	    last seen -- purely local/synchronous (no round trip to the Pi), so
+609	    unlike Storage/Network below the device list is scanned once when the
+610	    menu is opened rather than needing an explicit reply to arrive."""
+611	
+612	    def __init__(self, current_index):
+613	        self.current_index = current_index
+614	        self.available = [current_index]
+615	        self.error = None
+616	
+617	
+618	class PortState:
+619	    """Tracks which serial port is active and which others were last seen
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:08:51 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1132,
+  "limit": 28
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:08:51 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1132	    def do_refresh_video_devices():
+1133	        video_state.error = None
+1134	        video_state.available = find_capture_devices(skip_index=video_state.current_index)
+1135	
+1136	    def do_switch_video(new_index):
+1137	        nonlocal video
+1138	        if new_index == video_state.current_index:
+1139	            return
+1140	        print(f"Switching to capture device index {new_index}...")
+1141	        new_cap = open_capture(new_index, args.capture_width, args.capture_height, args.capture_fourcc)
+1142	        if not new_cap.isOpened():
+1143	            video_state.error = f"Could not open device {new_index}"
+1144	            return
+1145	        old_video = video
+1146	        video = VideoStream(new_cap)
+1147	        old_video.release()
+1148	        video_state.current_index = new_index
+1149	        video_state.error = None
+1150	        print(f"Switched to capture device {new_index}: {describe_negotiated_mode(new_cap)}")
+1151	
+1152	    def video_menu_items():
+1153	        items
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:08:56 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1159,
+  "limit": 10
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:08:56 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1159	            for idx in sorted(video_state.available):
+1160	                marker = "* " if idx == video_state.current_index else "  "
+1161	                items.append((f"{marker}Device {idx}", "", lambda idx=idx: do_switch_video(idx)))
+1162	        items.append(("Refresh", "", do_refresh_video_devices))
+1163	        return items
+1164	
+1165	    def do_refresh_serial_ports():
+1166	        port_state.error = None
+1167	        port_state.available = list_serial_ports()
+1168	        if port_state.current_port not in port_state.available:
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:09:04 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:09:06 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "try:\n    import pyte\nexcept ImportError:\n    pyte = None",
+  "new_string": "try:\n    import pyte\nexcept ImportError:\n    pyte = None\n\n# Windows-only, optional: lets the Video menu show real device names\n# (e.g. \"Logitech C920\") instead of just \"Device N\" -- OpenCV itself has\n# no portable way to ask for this. See capture_device_names().\ntry:\n    from pygrabber.dshow_graph import FilterGraph\nexcept ImportError:\n    FilterGraph = None"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:09:07 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:09:13 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:09:18 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "def list_serial_ports():\n    \"\"\"Unlike capture devices, enumerating serial ports doesn't require",
+  "new_string": "def capture_device_names():\n    \"\"\"Best-effort {index: friendly name} mapping for capture devices --\n    OpenCV has no portable API for this, so it's OS-specific and returns\n    {} wherever it's not available (macOS always, Windows without\n    `pip install pygrabber`, or if enumeration fails for any reason).\n    Callers fall back to a plain \"Device N\" label in that case.\n\n    Windows: pygrabber walks the same DirectShow device list client.py\n    already opens devices through (cv2.CAP_DSHOW), so its indices line up\n    with OpenCV's.\n\n    Linux: V4L2 exposes a name file per device in sysfs, matching the\n    /dev/videoN index OpenCV's V4L2 backend opens directly -- free, no\n    extra dependency needed.\"\"\"\n    if sys.platform == \"win32\":\n        if FilterGraph is None:\n            return {}\n        try:\n            return dict(enumerate(FilterGraph().get_input_devices()))\n        except Exception:\n            return {}\n    if sys.platform.startswith(\"linux\"):\n        names = {}\n        v4l2_dir = \"/sys/class/video4linux\"\n        for entry in os.listdir(v4l2_dir) if os.path.isdir(v4l2_dir) else []:\n            try:\n                index = int(entry.replace(\"video\", \"\"))\n                with open(f\"{v4l2_dir}/{entry}/name\") as f:\n                    names[index] = f.read().strip()\n            except (ValueError, OSError):\n                continue\n        return names\n    return {}\n\n\ndef list_serial_ports():\n    \"\"\"Unlike capture devices, enumerating serial ports doesn't require"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:09:20 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:09:27 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:09:29 AM</sup>
+
+That's a benign false-positive — some type checkers narrow `sys.platform` to the current OS and flag other branches, even though this needs to run correctly on all three platforms at runtime. Continuing with the rest of the changes.
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:09:29 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 637,
+  "limit": 10
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:09:29 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+637	    pillarbox bar still maps to the nearest edge instead of being ignored.
+638	    Returns None if there's no valid video area to map into (e.g. window
+639	    still initializing)."""
+640	    if video_rect.width <= 0 or video_rect.height <= 0:
+641	        return None
+642	    x = min(max(pos[0], video_rect.left), video_rect.right - 1)
+643	    y = min(max(pos[1], video_rect.top), video_rect.bottom - 1)
+644	    x_frac = (x - video_rect.left) / video_rect.width
+645	    y_frac = (y - video_rect.top) / video_rect.height
+646	    return x_frac, y_frac
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:09:34 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:09:35 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "class VideoState",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:09:35 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+649:class VideoState:
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:09:39 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 649,
+  "limit": 10
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:09:39 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+649	class VideoState:
+650	    """Tracks which local capture device is active and which others were
+651	    last seen -- purely local/synchronous (no round trip to the Pi), so
+652	    unlike Storage/Network below the device list is scanned once when the
+653	    menu is opened rather than needing an explicit reply to arrive."""
+654	
+655	    def __init__(self, current_index):
+656	        self.current_index = current_index
+657	        self.available = [current_index]
+658	        self.error = None
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:09:44 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    def __init__(self, current_index):\n        self.current_index = current_index\n        self.available = [current_index]\n        self.error = None\n\n\nclass PortState:",
+  "new_string": "    def __init__(self, current_index):\n        self.current_index = current_index\n        self.available = [current_index]\n        self.names = {}  # {index: friendly name}, best-effort -- see capture_device_names()\n        self.error = None\n\n\nclass PortState:"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:09:46 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:09:52 AM</sup>
+
+Now let's update `do_refresh_video_devices()` and `video_menu_items()`:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:09:53 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "def do_refresh_video_devices|def video_menu_items",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:09:53 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1176:    def do_refresh_video_devices():
+1196:    def video_menu_items():
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:09:56 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1176,
+  "limit": 32
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:09:56 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1176	    def do_refresh_video_devices():
+1177	        video_state.error = None
+1178	        video_state.available = find_capture_devices(skip_index=video_state.current_index)
+1179	
+1180	    def do_switch_video(new_index):
+1181	        nonlocal video
+1182	        if new_index == video_state.current_index:
+1183	            return
+1184	        print(f"Switching to capture device index {new_index}...")
+1185	        new_cap = open_capture(new_index, args.capture_width, args.capture_height, args.capture_fourcc)
+1186	        if not new_cap.isOpened():
+1187	            video_state.error = f"Could not open device {new_index}"
+1188	            return
+1189	        old_video = video
+1190	        video = VideoStream(new_cap)
+1191	        old_video.release()
+1192	        video_state.current_index = new_index
+1193	        video_state.error = None
+1194	        print(f"Switched to capture device {new_index}: {describe_negotiated_mode(new_cap)}")
+1195	
+1196	    def video_menu_items():
+1197	        items
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:10:02 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    def do_refresh_video_devices():\n        video_state.error = None\n        video_state.available = find_capture_devices(skip_index=video_state.current_index)",
+  "new_string": "    def do_refresh_video_devices():\n        video_state.error = None\n        video_state.available = find_capture_devices(skip_index=video_state.current_index)\n        # Computed once here (not from video_menu_items() itself, which\n        # _draw_dropdown() calls every single frame the dropdown is open) --\n        # on Windows this spins up a DirectShow FilterGraph, not something\n        # to redo 60 times a second just to draw a label.\n        video_state.names = capture_device_names()"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:10:04 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:10:09 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "            for idx in sorted(video_state.available):\n                marker = \"* \" if idx == video_state.current_index else \"  \"\n                items.append((f\"{marker}Device {idx}\", \"\", lambda idx=idx: do_switch_video(idx)))",
+  "new_string": "            for idx in sorted(video_state.available):\n                marker = \"* \" if idx == video_state.current_index else \"  \"\n                name = video_state.names.get(idx)\n                label = f\"{marker}Device {idx}\" + (f\" - {name}\" if name else \"\")\n                items.append((label, \"\", lambda idx=idx: do_switch_video(idx)))"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:10:11 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:10:15 AM</sup>
+
+Now let's add `pygrabber` as a Windows-only optional dependency using a PEP 508 environment marker so it doesn't break installs on Linux/Mac:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:10:16 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\requirements.txt",
+  "old_string": "pygame\nopencv-python\npyserial\npyperclip\npyte",
+  "new_string": "pygame\nopencv-python\npyserial\npyperclip\npyte\npygrabber; sys_platform == \"win32\""
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:10:17 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\requirements.txt has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:10:22 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:10:22 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; .\\.venv\\Scripts\\python.exe -m py_compile client.py; if ($?) { \"compile OK\" }"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:10:47 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+compile OK
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:10:52 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_video_devices.py"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:10:52 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1	import sys
+2	
+3	sys.path.insert(0, r"C:\Users\Marco\AppData\Local\Temp\claude\c--Users-Marco-Documents-GitHub-KVMDongle\0a01b7e4-f584-446c-847d-90e75b76e0b5\scratchpad\fake_pygame_pkg")
+4	sys.path.insert(0, r"c:\Users\Marco\Documents\GitHub\KVMDongle")
+5	
+6	import client
+7	
+8	probed = []
+9	
+10	
+11	class FakeCap:
+12	    def __init__(self, index, *_a):
+13	        self.index = index
+14	        probed.append(index)
+15	        self.released = False
+16	
+17	    def isOpened(self):
+18	        return self.index in (0, 2, 3)  # pretend 1 and 4 don't exist
+19	
+20	    def release(self):
+21	        self.released = True
+22	
+23	    def get(self, prop):
+24	        values = {
+25	            client.cv2.CAP_PROP_FOURCC: client.cv2.VideoWriter_fourcc(*"MJPG"),
+26	            client.cv2.CAP_PROP_FRAME_WIDTH: 1920,
+27	            client.cv2.CAP_PROP_FRAME_HEIGHT: 1080,
+28	            client.cv2.CAP_PROP_FPS: 30.0,
+29	        }
+30	        return values.get(prop, 0)
+31	
+32	
+33	client.cv2.VideoCapture = Fake
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:11:09 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:11:10 AM</sup>
+
+Let's add test coverage for `capture_device_names()` and update the `VideoState` defaults check:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:11:12 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_video_devices.py",
+  "old_string": "import sys\n\nsys.path.insert(0, r\"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\fake_pygame_pkg\")\nsys.path.insert(0, r\"c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\")\n\nimport client",
+  "new_string": "import sys\nimport unittest.mock\n\nsys.path.insert(0, r\"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\fake_pygame_pkg\")\nsys.path.insert(0, r\"c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\")\n\nimport client"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:11:19 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file C:\Users\Marco\AppData\Local\Temp\claude\c--Users-Marco-Documents-GitHub-KVMDongle\0a01b7e4-f584-446c-847d-90e75b76e0b5\scratchpad\test_video_devices.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:11:33 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_video_devices.py",
+  "old_string": "# --- VideoState defaults ---\nvs = client.VideoState(2)\nassert vs.current_index == 2\nassert vs.available == [2]\nassert vs.error is None\nprint(\"VideoState defaults OK\")\n\nprint(\"ALL VIDEO DEVICE TESTS PASSED\")",
+  "new_string": "# --- VideoState defaults ---\nvs = client.VideoState(2)\nassert vs.current_index == 2\nassert vs.available == [2]\nassert vs.names == {}\nassert vs.error is None\nprint(\"VideoState defaults OK\")\n\n# --- capture_device_names(): Windows branch via pygrabber ---\nclass FakeFilterGraph:\n    def get_input_devices(self):\n        return [\"Logitech C920\", \"OBS Virtual Camera\"]\n\n\nwith unittest.mock.patch.object(client, \"sys\") as fake_sys, \\\n     unittest.mock.patch.object(client, \"FilterGraph\", FakeFilterGraph):\n    fake_sys.platform = \"win32\"\n    names = client.capture_device_names()\nassert names == {0: \"Logitech C920\", 1: \"OBS Virtual Camera\"}, names\nprint(\"capture_device_names() Windows/pygrabber branch OK\")\n\n# --- capture_device_names(): Windows without pygrabber installed -> {} ---\nwith unittest.mock.patch.object(client, \"sys\") as fake_sys, \\\n     unittest.mock.patch.object(client, \"FilterGraph\", None):\n    fake_sys.platform = \"win32\"\n    names = client.capture_device_names()\nassert names == {}, names\nprint(\"capture_device_names() Windows-without-pygrabber falls back to {} OK\")\n\n# --- capture_device_names(): Windows, enumeration raises -> {} (not a crash) ---\nclass ExplodingFilterGraph:\n    def get_input_devices(self):\n        raise OSError(\"DirectShow enumeration failed\")\n\n\nwith unittest.mock.patch.object(client, \"sys\") as fake_sys, \\\n     unittest.mock.patch.object(client, \"FilterGraph\", ExplodingFilterGraph):\n    fake_sys.platform = \"win32\"\n    na
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:11:47 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file C:\Users\Marco\AppData\Local\Temp\claude\c--Users-Marco-Documents-GitHub-KVMDongle\0a01b7e4-f584-446c-847d-90e75b76e0b5\scratchpad\test_video_devices.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:12:05 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:12:06 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; .\\.venv\\Scripts\\python.exe \"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_video_devices.py\""
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:12:16 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+find_capture_devices basic scan OK
+find_capture_devices skip_index avoids reopening the active device OK
+describe_negotiated_mode formatting OK
+VideoState defaults OK
+capture_device_names() Windows/pygrabber branch OK
+capture_device_names() Windows-without-pygrabber falls back to {} OK
+capture_device_names() Windows enumeration failure falls back to {} OK
+capture_device_names() Linux/sysfs branch OK
+capture_device_names() unsupported platform falls back to {} OK
+ALL VIDEO DEVICE TESTS PASSED
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:12:21 AM</sup>
+
+All new tests pass. Let's run the full regression suite to confirm nothing else broke:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:12:23 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; $scratch = \"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\"; $files = Get-ChildItem \"$scratch\\test_*.py\" | Where-Object { $_.Name -ne \"test_terminal_overlay.py\" }; $failed = 0; foreach ($f in $files) { .\\.venv\\Scripts\\python.exe $f.FullName | Out-Null; if (-not $?) { Write-Host \"FAILED: $($f.Name)\" -ForegroundColor Red; $failed++ } }; if ($failed -eq 0) { \"ALL TEST FILES PASSED\" }"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:13:12 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+2026-08-09 03:12:51,715 [WARNING] dropped HID report to hidg1: endpoint still busy after 5 retries
+2026-08-09 03:12:51,716 [WARNING] failed to write HID report to hidg1: device gone
+2026-08-09 03:12:52,156 [INFO] invoking: systemctl restart kvmdongle-daemon
+2026-08-09 03:12:52,156 [INFO] invoking: systemctl reboot
+2026-08-09 03:12:52,156 [INFO] invoking: systemctl poweroff
+2026-08-09 03:12:52,156 [INFO] invoking: systemctl reboot
+2026-08-09 03:12:52,156 [WARNING] could not launch systemctl: no such file or directory: systemctl
+ALL TEST FILES PASSED
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:13:16 AM</sup>
+
+All green. Now let's update the README and docstring to document this.
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:13:16 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "offset": 140,
+  "limit": 6
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:13:16 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+140	  Your real cursor is never hidden or grabbed -- it's always free to also
+141	  use the menu bar, since clicks are routed by whether they land above or
+142	  below the menu bar strip, not by any mode switch.
+143	- **Clipboard > Paste Clipboard** types clipboard text onto the target,
+144	  character by character. **Macros** has Ctrl+Alt+Del, Alt+Tab, Alt+F4,
+145	  Win+R, and Win+D. Both are menu-only -- no local hotkeys -- so every
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:13:22 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "offset": 146,
+  "limit": 8
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:13:22 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+146	  keystroke while the window is focused is always forwarded straight to
+147	  the target, with nothing intercepted first.
+148	- **Video** menu: switch capture devices without restarting `client.py` --
+149	  lists detected indices (the active one marked with `*`) and has a
+150	  Refresh item to re-scan, e.g. after plugging in another capture card.
+151	  The active device isn't reopened just to confirm it's still there, so
+152	  switching or refreshing never disrupts an in-progress capture.
+153	- **Storage** menu: lists ISOs on the Pi's SD card (queried live from the
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:13:30 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "old_string": "- **Video** menu: switch capture devices without restarting `client.py` --\n  lists detected indices (the active one marked with `*`) and has a\n  Refresh item to re-scan, e.g. after plugging in another capture card.\n  The active device isn't reopened just to confirm it's still there, so\n  switching or refreshing never disrupts an in-progress capture.",
+  "new_string": "- **Video** menu: switch capture devices without restarting `client.py` --\n  lists detected indices (the active one marked with `*`) and has a\n  Refresh item to re-scan, e.g. after plugging in another capture card.\n  The active device isn't reopened just to confirm it's still there, so\n  switching or refreshing never disrupts an in-progress capture. Shows a\n  real device name alongside the index where it can get one (e.g.\n  \"Device 1 - Logitech C920\") -- OpenCV has no portable way to ask for\n  this, so it's best-effort and OS-specific: free on Linux (read from\n  sysfs), needs `pip install pygrabber` on Windows (already in\n  `requirements.txt`, Windows-only), not currently implemented on macOS.\n  Falls back to a plain \"Device N\" wherever a name isn't available."
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:13:31 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\README.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:13:35 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:13:35 AM</sup>
+
+Now let's update the docstring's Requirements line:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:13:36 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 17,
+  "limit": 3
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:13:36 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+17	
+18	Requirements:
+19	    pip install pygame opencv-python pyserial pyperclip pyte
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:13:42 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "Requirements:\n    pip install pygame opencv-python pyserial pyperclip pyte",
+  "new_string": "Requirements:\n    pip install pygame opencv-python pyserial pyperclip pyte\n    Windows only, optional: pip install pygrabber (real capture device\n    names in the Video menu instead of just \"Device N\")"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:13:43 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:13:49 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:13:50 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 47,
+  "limit": 5
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:13:50 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+47	      hotkeys, so every keystroke while focused is always forwarded to
+48	      the target with nothing intercepted first.
+49	    - Use the Video menu to switch capture devices without restarting --
+50	      lists detected indices, marks the active one, and has a Refresh
+51	      item to re-scan (e.g. after plugging in another capture card).
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:13:56 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    - Use the Video menu to switch capture devices without restarting --\n      lists detected indices, marks the active one, and has a Refresh\n      item to re-scan (e.g. after plugging in another capture card).",
+  "new_string": "    - Use the Video menu to switch capture devices without restarting --\n      lists detected indices, marks the active one, and has a Refresh\n      item to re-scan (e.g. after plugging in another capture card). Shows\n      a real device name where available (best-effort, OS-specific --\n      free on Linux, needs `pip install pygrabber` on Windows, not\n      implemented on macOS), else falls back to plain \"Device N\"."
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:13:58 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:14:03 AM</sup>
+
+Final compile check:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:14:04 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; .\\.venv\\Scripts\\python.exe -m py_compile client.py; if ($?) { \"compile OK\" }"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:14:07 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+compile OK
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:14:12 AM</sup>
+
+<details>
+<summary>Tool: <code>TodoWrite</code></summary>
+
+```json
+{
+  "todos": [
+    {
+      "content": "Add capture_device_names() (Windows via pygrabber, Linux via sysfs, macOS fallback)",
+      "status": "completed",
+      "activeForm": "Adding capture_device_names()"
+    },
+    {
+      "content": "Wire names into VideoState + video_menu_items() label",
+      "status": "completed",
+      "activeForm": "Wiring names into Video menu"
+    },
+    {
+      "content": "Add pygrabber as Windows-only optional dependency (env marker)",
+      "status": "completed",
+      "activeForm": "Adding pygrabber dependency"
+    },
+    {
+      "content": "Test coverage for all platform branches + regression pass",
+      "status": "completed",
+      "activeForm": "Testing and regression"
+    },
+    {
+      "content": "Update docstring + README",
+      "status": "completed",
+      "activeForm": "Updating docs"
+    }
+  ]
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:14:12 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+Todos have been modified successfully. Ensure that you continue to use the todo list to track your progress. Please proceed with the current tasks if applicable
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:14:20 AM</sup>
+
+Done. The Video menu now shows real device names where available, e.g. `Device 1 - Logitech C920` instead of just `Device 1`:
+
+- **Linux**: free, no new dependency — reads the name straight from `/sys/class/video4linux/videoN/name`, which lines up with the same index OpenCV's V4L2 backend opens.
+- **Windows**: needs `pip install pygrabber` (added to `requirements.txt` with a `sys_platform == "win32"` marker, so it's skipped entirely on Linux/Mac and won't break `pip install -r requirements.txt` there). It walks the same DirectShow device list `client.py` already uses via `cv2.CAP_DSHOW`, so indices line up.
+- **macOS**: not implemented (no easy dependency-free API for this) — falls back to the plain `Device N` label, same as if enumeration fails or the name is unavailable for any other reason.
+
+Name lookup happens once per menu-open/Refresh click (`do_refresh_video_devices()`), not every frame the dropdown is drawn — spinning up a DirectShow `FilterGraph` 60 times a second just to draw a label would be wasteful. Added test coverage for all four branches (Windows-with-pygrabber, Windows-without-pygrabber, Windows-enumeration-failure, Linux, and unsupported-platform), all green alongside the full existing suite.
+
+
+---
+
+## User <sup>8/9/2026, 3:14:34 AM</sup>
+
+<ide_opened_file>The user opened the file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py in the IDE. This may or may not be related to the current task.</ide_opened_file>
+
+is there any way this can be done on mac os as well or no
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:15:08 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:15:13 AM</sup>
+
+Yes, macOS has a path too, but it's worth knowing the tradeoff before I build it — a wrong name next to the wrong device would be worse than no name at all, and Mac is genuinely riskier here than Windows/Linux.
+
+Two options:
+
+1. **`pyobjc-framework-AVFoundation`** (proper native API, same family OpenCV itself uses on Mac for capture): `AVCaptureDevice.devices(for: .video)` gives real device names. Since OpenCV's Mac backend also goes through AVFoundation, the ordering is *likely* to line up with OpenCV's device index — but there's no official guarantee, same caveat that already exists for the Windows/pygrabber path. Adds a real dependency (pyobjc packages are sizeable).
+
+2. **Shell out to `system_profiler SPCameraDataType`** (zero new dependency — it's a built-in macOS tool): gets you names for free, but it's noticeably slower (can take up to a second or two) and, more importantly, its listing order has **no established relationship** to OpenCV's AVFoundation-based device index at all — it's a separate system-inventory tool, not the same API family. This one risks actually mislabeling devices, not just failing to label them.
+
+Given that risk difference, I'd lean toward option 1 (pyobjc) if you want this at all, and treat it the same "best-effort" way as the other platforms — but I wanted to flag the extra dependency weight before adding it, since it's meaningfully heavier than the free Linux sysfs read or the Windows pygrabber package. Want me to implement it via pyobjc, or would you rather skip macOS for now given the tradeoff?
+
+
+---
+
+## User <sup>8/9/2026, 3:16:27 AM</sup>
+
+ok we will ignore that feature on mac os for now
+
+could you add some more info about the serial device? device name and such
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:16:51 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:16:52 AM</sup>
+
+`pyserial` already exposes rich cross-platform device info via `serial.tools.list_ports` — no OS-specific hacks needed here, unlike video. Let's check the current implementation first.
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:16:53 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "def list_serial_ports|class PortState|def do_refresh_serial_ports|def port_menu_items",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:16:53 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+499:def list_serial_ports():
+667:class PortState:
+1221:    def do_refresh_serial_ports():
+1252:    def port_menu_items():
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:16:57 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 499,
+  "limit": 6
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:16:57 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+499	def list_serial_ports():
+500	    """Unlike capture devices, enumerating serial ports doesn't require
+501	    opening them at all (just a registry/sysfs query), so there's no
+502	    equivalent risk to sidestep for the currently-active one."""
+503	    return [p.device for p in serial.tools.list_ports.comports()]
+504
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:17:02 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 667,
+  "limit": 8
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:17:02 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+667	class PortState:
+668	    """Tracks which serial port is active and which others were last seen
+669	    -- same pattern as VideoState (local/synchronous scan, no round trip
+670	    to the Pi needed to list them)."""
+671	
+672	    def __init__(self, current_port):
+673	        self.current_port = current_port
+674	        self.available = [current_port]
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:17:07 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 674,
+  "limit": 4
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:17:07 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+674	        self.available = [current_port]
+675	        self.error = None
+676	
+677
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:17:12 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1221,
+  "limit": 40
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:17:12 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1221	    def do_refresh_serial_ports():
+1222	        port_state.error = None
+1223	        port_state.available = list_serial_ports()
+1224	        if port_state.current_port not in port_state.available:
+1225	            port_state.available.append(port_state.current_port)
+1226	
+1227	    def do_switch_serial_port(new_port):
+1228	        nonlocal link
+1229	        if new_port == port_state.current_port:
+1230	            return
+1231	        print(f"Switching to serial port {new_port}...")
+1232	        try:
+1233	            # SerialLink's constructor sleeps ~2s (letting the Pi's daemon
+1234	            # settle after the port opens) -- a deliberate, bounded pause
+1235	            # for a rare, user-initiated action, same trade-off already
+1236	            # accepted for ISO mount/eject.
+1237	            new_link = SerialLink(new_port, args.baud)
+1238	        except serial.SerialException as e:
+1239	            port_state.error = f"Could not open {new_port}: {e}"
+1240	            return
+1241
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:17:17 AM</sup>
+
+Now let's implement it, mirroring the `capture_device_names()` pattern but much simpler since pyserial handles this natively:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:17:22 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "def list_serial_ports():\n    \"\"\"Unlike capture devices, enumerating serial ports doesn't require\n    opening them at all (just a registry/sysfs query), so there's no\n    equivalent risk to sidestep for the currently-active one.\"\"\"\n    return [p.device for p in serial.tools.list_ports.comports()]",
+  "new_string": "def list_serial_ports():\n    \"\"\"Unlike capture devices, enumerating serial ports doesn't require\n    opening them at all (just a registry/sysfs query), so there's no\n    equivalent risk to sidestep for the currently-active one.\"\"\"\n    return [p.device for p in serial.tools.list_ports.comports()]\n\n\ndef serial_port_descriptions():\n    \"\"\"{device: description} for detected serial ports, e.g.\n    \"COM5\" -> \"USB-SERIAL CH340 (COM5)\". Unlike capture devices, pyserial\n    already exposes this portably on Windows/Linux/macOS via each OS's own\n    device registry -- no OS-specific code needed here. \"n/a\" (pyserial's\n    placeholder when a backend has nothing better) is treated as no\n    description, same as an empty one, so callers can fall back to just\n    the bare port path either way.\"\"\"\n    descriptions = {}\n    for p in serial.tools.list_ports.comports():\n        if p.description and p.description != \"n/a\":\n            descriptions[p.device] = p.description\n    return descriptions"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:17:24 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:17:31 AM</sup>
+
+Now let's update `PortState` to hold descriptions:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:17:32 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    def __init__(self, current_port):\n        self.current_port = current_port\n        self.available = [current_port]\n        self.error = None",
+  "new_string": "    def __init__(self, current_port):\n        self.current_port = current_port\n        self.available = [current_port]\n        self.descriptions = {}  # {device: description}, best-effort -- see serial_port_descriptions()\n        self.error = None"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:17:34 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:17:38 AM</sup>
+
+Now `do_refresh_serial_ports()` and `port_menu_items()`:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:17:39 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    def do_refresh_serial_ports():\n        port_state.error = None\n        port_state.available = list_serial_ports()\n        if port_state.current_port not in port_state.available:\n            port_state.available.append(port_state.current_port)",
+  "new_string": "    def do_refresh_serial_ports():\n        port_state.error = None\n        port_state.available = list_serial_ports()\n        if port_state.current_port not in port_state.available:\n            port_state.available.append(port_state.current_port)\n        port_state.descriptions = serial_port_descriptions()"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:17:41 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:17:46 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1262,
+  "limit": 12
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:17:46 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1262	        # same reasoning as the MenuBar connection-indicator lambda above.
+1263	        terminal.link = new_link
+1264	        old_link.close()
+1265	        port_state.current_port = new_port
+1266	        port_state.error = None
+1267	        print(f"Switched to serial port {new_port}")
+1268	
+1269	    def port_menu_items():
+1270	        items = []
+1271	        if port_state.error:
+1272	            items.append((f"Error: {port_state.error}", "", lambda: None))
+1273	        if not port_state.available:
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:17:51 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1269,
+  "limit": 14
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:17:51 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1269	    def port_menu_items():
+1270	        items = []
+1271	        if port_state.error:
+1272	            items.append((f"Error: {port_state.error}", "", lambda: None))
+1273	        if not port_state.available:
+1274	            items.append(("(no ports found)", "", lambda: None))
+1275	        else:
+1276	            for dev in port_state.available:
+1277	                marker = "* " if dev == port_state.current_port else "  "
+1278	                items.append((f"{marker}{dev}", "", lambda dev=dev: do_switch_serial_port(dev)))
+1279	        items.append(("Refresh", "", do_refresh_serial_ports))
+1280	        return items
+1281	
+1282	    def do_refresh_isos():
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:17:58 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "            for dev in port_state.available:\n                marker = \"* \" if dev == port_state.current_port else \"  \"\n                items.append((f\"{marker}{dev}\", \"\", lambda dev=dev: do_switch_serial_port(dev)))",
+  "new_string": "            for dev in port_state.available:\n                marker = \"* \" if dev == port_state.current_port else \"  \"\n                desc = port_state.descriptions.get(dev)\n                label = f\"{marker}{dev}\" + (f\" - {desc}\" if desc else \"\")\n                items.append((label, \"\", lambda dev=dev: do_switch_serial_port(dev)))"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:17:59 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:18:04 AM</sup>
+
+Let's compile-check and update/run the tests:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:18:04 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; .\\.venv\\Scripts\\python.exe -m py_compile client.py; if ($?) { \"compile OK\" }"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:18:26 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+compile OK
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:18:32 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_serial_port_devices.py"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:18:32 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1	import sys
+2	
+3	sys.path.insert(0, r"C:\Users\Marco\AppData\Local\Temp\claude\c--Users-Marco-Documents-GitHub-KVMDongle\0a01b7e4-f584-446c-847d-90e75b76e0b5\scratchpad\fake_pygame_pkg")
+4	sys.path.insert(0, r"c:\Users\Marco\Documents\GitHub\KVMDongle")
+5	
+6	import client
+7	
+8	
+9	class FakePortInfo:
+10	    def __init__(self, device):
+11	        self.device = device
+12	
+13	
+14	def fake_comports():
+15	    return [FakePortInfo("COM3"), FakePortInfo("COM5")]
+16	
+17	
+18	client.serial.tools.list_ports.comports = fake_comports
+19	
+20	assert client.list_serial_ports() == ["COM3", "COM5"]
+21	print("list_serial_ports OK")
+22	
+23	# --- PortState defaults ---
+24	ps = client.PortState("COM5")
+25	assert ps.current_port == "COM5"
+26	assert ps.available == ["COM5"]
+27	assert ps.error is None
+28	print("PortState defaults OK")
+29	
+30	print("ALL SERIAL PORT DEVICE TESTS PASSED")
+31
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:18:37 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:18:43 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_serial_port_devices.py",
+  "old_string": "class FakePortInfo:\n    def __init__(self, device):\n        self.device = device\n\n\ndef fake_comports():\n    return [FakePortInfo(\"COM3\"), FakePortInfo(\"COM5\")]\n\n\nclient.serial.tools.list_ports.comports = fake_comports\n\nassert client.list_serial_ports() == [\"COM3\", \"COM5\"]\nprint(\"list_serial_ports OK\")\n\n# --- PortState defaults ---\nps = client.PortState(\"COM5\")\nassert ps.current_port == \"COM5\"\nassert ps.available == [\"COM5\"]\nassert ps.error is None\nprint(\"PortState defaults OK\")\n\nprint(\"ALL SERIAL PORT DEVICE TESTS PASSED\")",
+  "new_string": "class FakePortInfo:\n    def __init__(self, device, description=\"n/a\"):\n        self.device = device\n        self.description = description\n\n\ndef fake_comports():\n    return [FakePortInfo(\"COM3\"), FakePortInfo(\"COM5\")]\n\n\nclient.serial.tools.list_ports.comports = fake_comports\n\nassert client.list_serial_ports() == [\"COM3\", \"COM5\"]\nprint(\"list_serial_ports OK\")\n\n# --- PortState defaults ---\nps = client.PortState(\"COM5\")\nassert ps.current_port == \"COM5\"\nassert ps.available == [\"COM5\"]\nassert ps.descriptions == {}\nassert ps.error is None\nprint(\"PortState defaults OK\")\n\n# --- serial_port_descriptions(): real descriptions kept, \"n/a\"/empty skipped\n# so callers can fall back to the bare port path -- pyserial uses \"n/a\" as\n# its own placeholder when a backend has nothing better to report. ---\nclient.serial.tools.list_ports.comports = lambda: [\n    FakePortInfo(\"COM3\", \"USB-SERIAL CH340 (COM3)\"),\n    FakePortInfo(\"COM5\", \"n/a\"),\n    FakePortInfo(\"COM7\", \"\"),\n    FakePortInfo(\"COM9\", None),\n]\ndescriptions = client.serial_port_descriptions()\nassert descriptions == {\"COM3\": \"USB-SERIAL CH340 (COM3)\"}, 
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:18:45 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file C:\Users\Marco\AppData\Local\Temp\claude\c--Users-Marco-Documents-GitHub-KVMDongle\0a01b7e4-f584-446c-847d-90e75b76e0b5\scratchpad\test_serial_port_devices.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:18:51 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; .\\.venv\\Scripts\\python.exe \"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_serial_port_devices.py\""
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:18:54 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+list_serial_ports OK
+PortState defaults OK
+serial_port_descriptions() keeps real descriptions, skips n/a/empty/None OK
+ALL SERIAL PORT DEVICE TESTS PASSED
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:18:58 AM</sup>
+
+Now let's run the full regression suite:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:19:00 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; $scratch = \"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\"; $files = Get-ChildItem \"$scratch\\test_*.py\" | Where-Object { $_.Name -ne \"test_terminal_overlay.py\" }; $failed = 0; foreach ($f in $files) { .\\.venv\\Scripts\\python.exe $f.FullName | Out-Null; if (-not $?) { Write-Host \"FAILED: $($f.Name)\" -ForegroundColor Red; $failed++ } }; if ($failed -eq 0) { \"ALL TEST FILES PASSED\" }"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:19:28 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+2026-08-09 03:19:07,491 [WARNING] dropped HID report to hidg1: endpoint still busy after 5 retries
+2026-08-09 03:19:07,491 [WARNING] failed to write HID report to hidg1: device gone
+2026-08-09 03:19:07,927 [INFO] invoking: systemctl restart kvmdongle-daemon
+2026-08-09 03:19:07,927 [INFO] invoking: systemctl reboot
+2026-08-09 03:19:07,927 [INFO] invoking: systemctl poweroff
+2026-08-09 03:19:07,927 [INFO] invoking: systemctl reboot
+2026-08-09 03:19:07,927 [WARNING] could not launch systemctl: no such file or directory: systemctl
+ALL TEST FILES PASSED
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:19:34 AM</sup>
+
+All green. Now let's update the README and docstring to document this:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:19:35 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "offset": 156,
+  "limit": 7
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:19:35 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+156	  sysfs), needs `pip install pygrabber` on Windows (already in
+157	  `requirements.txt`, Windows-only), not currently implemented on macOS.
+158	  Falls back to a plain "Device N" wherever a name isn't available.
+159	- **Storage** menu: lists ISOs on the Pi's SD card (queried live from the
+160	  Pi -- it's the source of truth), mount one (exposed to the target as a
+161	  read-only CD-ROM within a few seconds), or eject. The currently mounted
+162	  one is marked with `*`.
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:19:39 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:19:40 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "Serial Port\\*\\* menu",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:19:40 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+169:- **Serial Port** menu: switch which serial port `client.py` talks to
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:19:44 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "offset": 169,
+  "limit": 6
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:19:44 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+169	- **Serial Port** menu: switch which serial port `client.py` talks to
+170	  without restarting it -- lists detected ports (the active one marked
+171	  with `*`) and has a Refresh item to re-scan, e.g. after plugging in a
+172	  different USB-TTL adapter. The new port is only switched over once it's
+173	  confirmed to open successfully; the old one is left untouched (and only
+174	  closed after the switch) if it doesn't.
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:19:52 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "old_string": "- **Serial Port** menu: switch which serial port `client.py` talks to\n  without restarting it -- lists detected ports (the active one marked\n  with `*`) and has a Refresh item to re-scan, e.g. after plugging in a\n  different USB-TTL adapter. The new port is only switched over once it's\n  confirmed to open successfully; the old one is left untouched (and only\n  closed after the switch) if it doesn't.",
+  "new_string": "- **Serial Port** menu: switch which serial port `client.py` talks to\n  without restarting it -- lists detected ports (the active one marked\n  with `*`) and has a Refresh item to re-scan, e.g. after plugging in a\n  different USB-TTL adapter. The new port is only switched over once it's\n  confirmed to open successfully; the old one is left untouched (and only\n  closed after the switch) if it doesn't. Shows a real description\n  alongside the port path where the OS has one (e.g. \"COM5 - USB-SERIAL\n  CH340 (COM5)\") -- unlike capture devices, this is fully portable via\n  `pyserial` itself on Windows/Linux/macOS, no extra dependency or\n  per-OS code needed. Falls back to the bare port path if the OS doesn't\n  have a description for it."
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:19:53 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\README.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:19:59 AM</sup>
+
+Now let's update the client.py docstring's Controls section for the Serial Port menu:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:20:00 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "Use the Serial Port menu",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:20:00 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+55:    - Use the Serial Port menu to switch which COM/tty port talks to the
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:20:05 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 55,
+  "limit": 3
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:20:05 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+55	    - Use the Serial Port menu to switch which COM/tty port talks to the
+56	      Pi without restarting -- handy if Windows reassigned the adapter to
+57	      a different COM number after a reconnect.
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:20:11 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    - Use the Serial Port menu to switch which COM/tty port talks to the\n      Pi without restarting -- handy if Windows reassigned the adapter to\n      a different COM number after a reconnect.",
+  "new_string": "    - Use the Serial Port menu to switch which COM/tty port talks to the\n      Pi without restarting -- handy if Windows reassigned the adapter to\n      a different COM number after a reconnect. Shows a real description\n      next to each port where the OS has one (e.g. \"USB-SERIAL CH340\"),\n      fully portable via pyserial itself -- no extra dependency needed,\n      unlike the Video menu's device names."
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:20:13 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:20:18 AM</sup>
+
+Final compile check:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:20:18 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; .\\.venv\\Scripts\\python.exe -m py_compile client.py; if ($?) { \"compile OK\" }"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:20:21 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+compile OK
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:20:26 AM</sup>
+
+<details>
+<summary>Tool: <code>TodoWrite</code></summary>
+
+```json
+{
+  "todos": [
+    {
+      "content": "Add serial_port_descriptions() using pyserial's built-in cross-platform info",
+      "status": "completed",
+      "activeForm": "Adding serial_port_descriptions()"
+    },
+    {
+      "content": "Wire descriptions into PortState + port_menu_items() label",
+      "status": "completed",
+      "activeForm": "Wiring descriptions into Serial Port menu"
+    },
+    {
+      "content": "Test coverage (real/n-a/empty/None descriptions) + regression pass",
+      "status": "completed",
+      "activeForm": "Testing and regression"
+    },
+    {
+      "content": "Update docstring + README",
+      "status": "completed",
+      "activeForm": "Updating docs"
+    }
+  ]
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:20:26 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+Todos have been modified successfully. Ensure that you continue to use the todo list to track your progress. Please proceed with the current tasks if applicable
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:20:35 AM</sup>
+
+Done — and much simpler than the video case. The Serial Port menu now shows a real description next to each port, e.g. `COM5 - USB-SERIAL CH340 (COM5)`, and this works identically on Windows, Linux, and macOS with **zero new dependencies**: `pyserial` (already a hard requirement) exposes this natively via `serial.tools.list_ports.comports()`'s `.description` field on all three platforms, unlike the video-device situation where OpenCV has no portable API at all.
+
+- `serial_port_descriptions()` returns `{device: description}`, skipping pyserial's `"n/a"` placeholder (and empty/`None`) so those fall back cleanly to just the bare port path.
+- Computed once per menu-open/Refresh (`do_refresh_serial_ports()`), same pattern as the Video menu's names, not recomputed every frame.
+- Test coverage added for real descriptions and all three "no description" cases (`n/a`, empty string, `None`). Full suite green, README and docstring updated.
 
 
 ---

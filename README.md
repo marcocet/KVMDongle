@@ -149,7 +149,13 @@ grainy/blurry here" (see Troubleshooting).
   lists detected indices (the active one marked with `*`) and has a
   Refresh item to re-scan, e.g. after plugging in another capture card.
   The active device isn't reopened just to confirm it's still there, so
-  switching or refreshing never disrupts an in-progress capture.
+  switching or refreshing never disrupts an in-progress capture. Shows a
+  real device name alongside the index where it can get one (e.g.
+  "Device 1 - Logitech C920") -- OpenCV has no portable way to ask for
+  this, so it's best-effort and OS-specific: free on Linux (read from
+  sysfs), needs `pip install pygrabber` on Windows (already in
+  `requirements.txt`, Windows-only), not currently implemented on macOS.
+  Falls back to a plain "Device N" wherever a name isn't available.
 - **Storage** menu: lists ISOs on the Pi's SD card (queried live from the
   Pi -- it's the source of truth), mount one (exposed to the target as a
   read-only CD-ROM within a few seconds), or eject. The currently mounted
@@ -165,7 +171,12 @@ grainy/blurry here" (see Troubleshooting).
   with `*`) and has a Refresh item to re-scan, e.g. after plugging in a
   different USB-TTL adapter. The new port is only switched over once it's
   confirmed to open successfully; the old one is left untouched (and only
-  closed after the switch) if it doesn't.
+  closed after the switch) if it doesn't. Shows a real description
+  alongside the port path where the OS has one (e.g. "COM5 - USB-SERIAL
+  CH340 (COM5)") -- unlike capture devices, this is fully portable via
+  `pyserial` itself on Windows/Linux/macOS, no extra dependency or
+  per-OS code needed. Falls back to the bare port path if the OS doesn't
+  have a description for it.
 - **Terminal** menu ("Open Pi Shell"): opens a real `bash` shell running
   on the Pi, over the same serial link, in its **own separate window** --
   not an overlay on the video, so it has its own taskbar entry and can be
