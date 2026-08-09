@@ -63,19 +63,29 @@ Controls:
       the current one. The Pi is the source of truth for what's
       available -- add ISOs by swapping the SD card or via the Pi's
       Wi-Fi upload page.
-    - Use Terminal > Open Pi Shell to run bash commands directly on the
+    - Use Debug > Open Pi Shell to run bash commands directly on the
       Pi, over the same serial link -- opens in its own separate OS
       window (not an overlay on the video), rendered with real colors/
       cursor movement, like the shell half of an SSH session (requires
       `pip install pyte`). That window has its own keyboard focus, so it
       never steals input from the main KVM window or vice versa; press
       F12 or just close the window to end the session.
-    - The Terminal menu also has Restart Daemon (one click), and Reboot
+    - The Debug menu also has Restart Daemon (one click), and Reboot
       Pi / Shutdown Pi (click once to arm -- the label changes to prompt
       a second click within ~4 seconds, or it just disarms itself). None
       of these get a "success" reply, since whatever would send one (the
       daemon process, or the whole machine) is exactly what's going away;
       watch the connection light instead.
+    - Debug > Open Debug Log opens a separate window showing everything
+      this app itself prints (serial errors, macro/paste activity, Pi
+      replies with --debug, etc). This is the only way to see any of it
+      once packaged as a windowed/console-less standalone application
+      (a Windows EXE built without a console, a macOS .app bundle, ...) --
+      there's no terminal for the OS to attach in the first place, so
+      every print() would otherwise go nowhere anyone could ever see.
+      Opening it late still shows everything printed since startup, not
+      just from that point on. Lines mentioning "error"/"warning" are
+      highlighted so problems jump out while scanning a long log.
     - Use Session > Quit in the menu bar, or the window's close button,
       to exit (there's no local keyboard shortcut for this, since every
       keystroke while focused is forwarded to the target).
@@ -113,6 +123,90 @@ try:
     from pygrabber.dshow_graph import FilterGraph
 except ImportError:
     FilterGraph = None
+
+
+class _LogBuffer:
+    """Bounded, thread-safe backing store for the Debug Log window --
+    every complete line this process prints (see _StreamTee) lands here,
+    regardless of whether that window is even open yet, so opening it
+    later still shows everything printed since startup, not just
+    whatever's printed from that point on."""
+
+    MAX_LINES = 2000
+
+    def __init__(self):
+        self.lines = []
+        self._lock = threading.Lock()
+        self._listeners = []
+
+    def append_line(self, line):
+        with self._lock:
+            self.lines.append(line)
+            if len(self.lines) > self.MAX_LINES:
+                del self.lines[:len(self.lines) - self.MAX_LINES]
+            listeners = list(self._listeners)
+        for listener in listeners:
+            listener(line)
+
+    def snapshot(self):
+        with self._lock:
+            return list(self.lines)
+
+    def add_listener(self, fn):
+        with self._lock:
+            self._listeners.append(fn)
+
+    def remove_listener(self, fn):
+        with self._lock:
+            if fn in self._listeners:
+                self._listeners.remove(fn)
+
+
+class _StreamTee:
+    """Wraps a real stream (or None -- sys.stdout/stderr genuinely are
+    None on a windowed/console-less build, e.g. PyInstaller's
+    --noconsole/--windowed on Windows or a macOS .app bundle) and feeds
+    every complete line into a shared _LogBuffer too. This is the only
+    way to see any of this app's own diagnostic output at all once
+    packaged that way -- there's no terminal for the OS to attach in the
+    first place, so every existing print() call in this file would
+    otherwise go nowhere anyone could ever see, errors included.
+
+    Installed globally over sys.stdout/sys.stderr (see main()) rather
+    than threading a logging call through every print() site -- this
+    catches all of them, including ones added later, with no call-site
+    changes needed anywhere in this file."""
+
+    def __init__(self, real_stream, buffer):
+        self.real_stream = real_stream
+        self.buffer = buffer
+        self._partial = ""
+        self._lock = threading.Lock()
+
+    def write(self, text):
+        if self.real_stream is not None:
+            try:
+                self.real_stream.write(text)
+            except Exception:
+                pass
+        with self._lock:
+            self._partial += text
+            complete = []
+            while "\n" in self._partial:
+                line, self._partial = self._partial.split("\n", 1)
+                complete.append(line)
+        for line in complete:
+            self.buffer.append_line(line)
+
+    def flush(self):
+        if self.real_stream is not None:
+            try:
+                self.real_stream.flush()
+            except Exception:
+                pass
+
+    def isatty(self):
+        return False
 
 MENU_HEIGHT = 28
 MIN_WINDOW_WIDTH = 320
@@ -1000,7 +1094,7 @@ class TerminalWindow:
         self.proc = None  # not ours to track/wait on anymore -- let it linger
 
     def close(self):
-        """The user asked (Terminal menu) to end the session right now --
+        """The user asked (Debug menu) to end the session right now --
         unlike notify_closed(), this really does end the window, since the
         user explicitly asked for it to close rather than the Pi's shell
         ending unprompted."""
@@ -1020,6 +1114,75 @@ class TerminalWindow:
             except subprocess.TimeoutExpired:
                 self.proc.terminate()
             self.proc = None
+
+
+class DebugLogWindow:
+    """Controller for a separate OS window showing everything this
+    process has printed to stdout/stderr (see _LogBuffer/_StreamTee) --
+    the only way to see any of this app's own diagnostic output at all
+    once packaged as a windowed/console-less standalone application
+    (no terminal for the OS to attach in the first place).
+
+    Mirrors TerminalWindow's separate-process design (pygame/SDL only
+    supports one window per process) but much simpler: purely
+    one-directional -- log lines out, nothing ever comes back -- so there's
+    no reader thread, no protocol framing, just newline-delimited text
+    written to the child's stdin."""
+
+    SCRIPT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "debug_log_window.py")
+
+    def __init__(self, buffer):
+        self.buffer = buffer
+        self.proc = None
+        self.is_open = False
+        # _send_line runs as the buffer's listener callback, which fires
+        # from whatever thread happens to print() something -- the
+        # background serial reader thread included -- so concurrent calls
+        # are a real, not just theoretical, possibility. Guards the
+        # write+flush pair so two threads' lines can't interleave into a
+        # corrupted line in the child's stream.
+        self._write_lock = threading.Lock()
+
+    def open(self):
+        if self.is_open:
+            return
+        try:
+            self.proc = subprocess.Popen([sys.executable, self.SCRIPT_PATH], stdin=subprocess.PIPE)
+        except OSError as e:
+            print(f"[debug log] could not launch debug log window: {e}")
+            return
+        self.is_open = True
+        # Replay everything already logged before this window existed --
+        # opening it late shouldn't mean missing the startup messages.
+        for line in self.buffer.snapshot():
+            self._send_line(line)
+        self.buffer.add_listener(self._send_line)
+
+    def _send_line(self, line):
+        with self._write_lock:
+            if self.proc is None or self.proc.poll() is not None:
+                self.is_open = False
+                return
+            try:
+                self.proc.stdin.write((line + "\n").encode("utf-8", errors="replace"))
+                self.proc.stdin.flush()
+            except (BrokenPipeError, OSError):
+                self.is_open = False
+
+    def close(self):
+        if not self.is_open:
+            return
+        self.is_open = False
+        self.buffer.remove_listener(self._send_line)
+        with self._write_lock:
+            if self.proc is not None:
+                if self.proc.poll() is None:
+                    self.proc.terminate()
+                    try:
+                        self.proc.wait(timeout=1)
+                    except subprocess.TimeoutExpired:
+                        self.proc.kill()
+                self.proc = None
 
 
 def _fix_windows_dpi_scaling():
@@ -1050,6 +1213,16 @@ def _fix_windows_dpi_scaling():
 
 
 def main():
+    # Installed before anything else prints a single line -- a packaged,
+    # windowed standalone build (PyInstaller --noconsole on Windows, a
+    # macOS .app bundle, ...) has no terminal at all, so every print()
+    # below would otherwise go nowhere anyone could ever see. Safe even
+    # when a real console IS attached: _StreamTee still writes through to
+    # it unchanged, this only adds a second destination.
+    log_buffer = _LogBuffer()
+    sys.stdout = _StreamTee(sys.stdout, log_buffer)
+    sys.stderr = _StreamTee(sys.stderr, log_buffer)
+
     _fix_windows_dpi_scaling()
 
     parser = argparse.ArgumentParser(description="Laptop crash cart: video + keyboard/mouse/storage bridge")
@@ -1142,6 +1315,7 @@ def main():
     storage = StorageState()
     network = NetworkState()
     terminal = TerminalWindow(link)
+    debug_log = DebugLogWindow(log_buffer)
     reboot_arm = ArmedAction()
     shutdown_arm = ArmedAction()
 
@@ -1162,6 +1336,12 @@ def main():
             terminal.close()
         else:
             terminal.open()
+
+    def do_toggle_debug_log():
+        if debug_log.is_open:
+            debug_log.close()
+        else:
+            debug_log.open()
 
     def do_restart_daemon():
         print("[power] restarting the Pi's daemon")
@@ -1195,6 +1375,8 @@ def main():
         items.append((reboot_label, "", do_reboot))
         shutdown_label = "Shutdown Pi (click again to confirm)" if shutdown_arm.is_armed() else "Shutdown Pi"
         items.append((shutdown_label, "", do_shutdown))
+        debug_log_label = "Close Debug Log" if debug_log.is_open else "Open Debug Log"
+        items.append((debug_log_label, "", do_toggle_debug_log))
         return items
 
     def do_refresh_video_devices():
@@ -1568,6 +1750,9 @@ def main():
     # window) would sit there indefinitely after we exit.
     if terminal.is_open:
         terminal.close()
+
+    if debug_log.is_open:
+        debug_log.close()
 
     video.release()
     link.close()

@@ -177,7 +177,7 @@ grainy/blurry here" (see Troubleshooting).
   `pyserial` itself on Windows/Linux/macOS, no extra dependency or
   per-OS code needed. Falls back to the bare port path if the OS doesn't
   have a description for it.
-- **Terminal** menu ("Open Pi Shell"): opens a real `bash` shell running
+- **Debug** menu ("Open Pi Shell"): opens a real `bash` shell running
   on the Pi, over the same serial link, in its **own separate window** --
   not an overlay on the video, so it has its own taskbar entry and can be
   moved/resized/closed independently, and never steals keyboard/mouse
@@ -191,7 +191,18 @@ grainy/blurry here" (see Troubleshooting).
   the `pyte` package (see `requirements.txt`) -- if it's missing, clicking
   "Open Pi Shell" just prints a note to the terminal instead of opening
   anything.
-- The **Terminal** menu also has three power commands for the Pi itself,
+- **Debug > Open Debug Log** opens another separate window showing
+  everything `client.py` itself prints -- serial errors, macro/paste
+  activity, Pi replies with `--debug`, and so on. This is the only way to
+  see any of that once packaged as a windowed/console-less standalone
+  application (a Windows EXE built without a console, a macOS `.app`
+  bundle, ...), since there's no terminal for the OS to even attach in
+  the first place -- every `print()` in the whole app would otherwise go
+  nowhere anyone could ever see, errors included. Opening it late still
+  shows everything printed since startup, not just from that point on,
+  and lines mentioning "error"/"warning" are color-highlighted so
+  problems jump out while scanning a long log.
+- The **Debug** menu also has three power commands for the Pi itself,
   each of which shells out to `systemctl` on the Pi:
   - **Restart Daemon** -- one click, restarts just `kvmdongle-daemon`
     (e.g. if it's gotten into a stuck state). Reconnects on its own within
@@ -418,7 +429,7 @@ sudo /opt/kvmdongle/wifi-ap-toggle.sh off   # back to normal Wi-Fi
   `sudo ./install.sh` + restart-the-daemon step as the mouse-descriptor
   change earlier, since it's a protocol change between `client.py` and
   `pi/daemon.py`.
-- **Terminal menu says "Open Pi Shell" but nothing happens, or the shell
+- **Debug menu says "Open Pi Shell" but nothing happens, or the shell
   window opens but the Pi never replies**: the Terminal feature added new
   frame types to `protocol.py` (`SHELL_OPEN`/`SHELL_INPUT`/`SHELL_OUTPUT`/
   etc.) that a Pi still running an older `pi/daemon.py` doesn't know about

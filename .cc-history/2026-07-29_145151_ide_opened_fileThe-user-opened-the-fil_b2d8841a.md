@@ -6,8 +6,8 @@
 | **Session ID** | `b2d8841a-7434-4615-9fcb-f34f5020c07a` |
 | **Working Dir** | `c:\Users\Marco\Documents\GitHub\KVMDongle` |
 | **Started** | 7/29/2026, 2:51:51 PM |
-| **Last Updated** | 8/9/2026, 3:20:35 AM |
-| **Messages** | 2658 |
+| **Last Updated** | 8/9/2026, 3:41:40 AM |
+| **Messages** | 2852 |
 
 ---
 
@@ -44687,6 +44687,3044 @@ Done — and much simpler than the video case. The Serial Port menu now shows a 
 - `serial_port_descriptions()` returns `{device: description}`, skipping pyserial's `"n/a"` placeholder (and empty/`None`) so those fall back cleanly to just the bare port path.
 - Computed once per menu-open/Refresh (`do_refresh_serial_ports()`), same pattern as the Video menu's names, not recomputed every frame.
 - Test coverage added for real descriptions and all three "no description" cases (`n/a`, empty string, `None`). Full suite green, README and docstring updated.
+
+
+---
+
+## User <sup>8/9/2026, 3:22:42 AM</sup>
+
+awesome thank you
+
+could you compile this into 3 executables, windows, mac and linux
+
+windows as an exe
+
+linux as a .run
+
+and mac as an app
+
+
+---
+
+## User <sup>8/9/2026, 3:23:06 AM</sup>
+
+[Request interrupted by user]
+
+
+---
+
+## User <sup>8/9/2026, 3:24:01 AM</sup>
+
+awesome thank you
+
+
+could you add a feature to open a debug log window for when this is run as a normal standalone application?
+
+
+could you compile this into 3 executables, windows, mac and linux
+
+windows as an exe
+
+linux as a .run
+
+and mac as an app
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:26:26 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:26:27 AM</sup>
+
+I'll do this in two parts. First, the debug log window — that's fully within reach here. The 3-platform packaging is a bigger topic with a real constraint I need to flag before diving in, so I'll come back to that after.
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:26:28 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 78,
+  "limit": 30
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:26:28 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+78	      watch the connection light instead.
+79	    - Use Session > Quit in the menu bar, or the window's close button,
+80	      to exit (there's no local keyboard shortcut for this, since every
+81	      keystroke while focused is forwarded to the target).
+82	"""
+83	
+84	import argparse
+85	import os
+86	import queue
+87	import subprocess
+88	import sys
+89	import threading
+90	import time
+91	
+92	import cv2
+93	import pygame
+94	import serial
+95	import serial.tools.list_ports
+96	
+97	import protocol
+98	
+99	try:
+100	    import pyperclip
+101	except ImportError:
+102	    pyperclip = None
+103	
+104	try:
+105	    import pyte
+106	except ImportError:
+107	    pyte = None
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:26:38 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:26:38 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "Session.*Quit|\\(\"Session\"",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:26:38 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+79:    - Use Session > Quit in the menu bar, or the window's close button,
+1367:        ("Session", [("Quit", "", do_quit)], None),
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:26:43 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1355,
+  "limit": 20
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:26:43 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1355	            items.append(("Enable Wi-Fi AP (for ISO uploads)", "", do_enable_ap))
+1356	            items.append(("Disable Wi-Fi AP", "", do_disable_ap))
+1357	        return items
+1358	
+1359	    menus = [
+1360	        ("Macros", [(label, "", lambda usage_ids=usage_ids, label=label: do_macro(usage_ids, label))
+1361	                    for (label, usage_ids) in MACROS], None),
+1362	        ("Clipboard", [("Paste Clipboard", "", do_paste)], None),
+1363	        ("Video", video_menu_items, do_refresh_video_devices),
+1364	        ("Serial Port", port_menu_items, do_refresh_serial_ports),
+1365	        ("Storage", storage_menu_items, do_refresh_isos),
+1366	        ("Network", network_menu_items, do_query_ap_status),
+1367	        ("Session", [("Quit", "", do_quit)], None),
+1368	        ("Debug", terminal_menu_items, None)
+1369	    ]
+1370	    # A plain "link.is_connected" here would snapshot a bound method on
+1371	    # whichever SerialLink object is current *right now* -- once
+1372	    # do
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:26:49 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:26:49 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "\"Terminal\"|\"Debug\"",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:26:49 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1368:        ("Debug", terminal_menu_items, None)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:27:01 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:27:02 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1094,
+  "limit": 30
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:27:02 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1094	
+1095	    serial_port = args.serial_port
+1096	    if serial_port is None:
+1097	        print("Scanning for serial ports...")
+1098	        ports = list_serial_ports()
+1099	        if not ports:
+1100	            print("No serial ports found. Specify one with --serial-port.")
+1101	            sys.exit(1)
+1102	        print(f"Found ports: {ports}. Using {ports[0]}.")
+1103	        serial_port = ports[0]
+1104	
+1105	    print(f"Opening serial link on {serial_port} @ {args.baud} baud...")
+1106	    try:
+1107	        link = SerialLink(serial_port, args.baud)
+1108	    except serial.SerialException as e:
+1109	        print(f"Could not open serial port: {e}")
+1110	        sys.exit(1)
+1111	
+1112	    pygame.init()
+1113	    video = VideoStream(cap)
+1114	    frame = None
+1115	    print("Waiting for the first frame from the capture device...")
+1116	    wait_start = time.monotonic()
+1117	    while frame is None:
+1118	        frame = video.get_latest_frame()
+1119	        if time.monotonic() - wait_st
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:27:08 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:27:08 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "^def main\\(\\):",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:27:08 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1052:def main():
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:27:14 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1052,
+  "limit": 10
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:27:14 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1052	def main():
+1053	    _fix_windows_dpi_scaling()
+1054	
+1055	    parser = argparse.ArgumentParser(description="Laptop crash cart: video + keyboard/mouse/storage bridge")
+1056	    parser.add_argument("--serial-port", default=None,
+1057	                         help="COM port / tty for the Pi's control link -- omit to auto-select "
+1058	                              "the first detected serial port")
+1059	    parser.add_argument("--capture-index", type=int, default=None, help="OpenCV capture device index")
+1060	    parser.add_argument("--capture-width", type=int, default=1920,
+1061	                         help="request this capture width (default 1920 -- without an explicit "
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:27:21 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:27:22 AM</sup>
+
+Let's write the child-process script for the debug log window (mirroring `terminal_window.py`'s architecture, but much simpler — purely one-directional text display):
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:27:37 AM</sup>
+
+<details>
+<summary>Tool: <code>Write</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\debug_log_window.py",
+  "content": "\"\"\"\ndebug_log_window.py\n\nStandalone helper process for client.py's \"Debug Log\" feature: a real,\nseparate OS window that displays everything client.py prints to its own\nstdout/stderr. Spawned by client.py as a child process (see\nDebugLogWindow in client.py), for the same reason as the Pi-shell\nterminal -- pygame/SDL only supports one window per process. Much\nsimpler than that one, though: purely one-directional (client.py sends\nlines, this process never sends anything back), no interactivity beyond\nscrolling.\n\nThis exists because a packaged, windowed standalone build (a Windows EXE\nbuilt without a console, a macOS .app bundle, ...) has no visible\nterminal at all -- every print() client.py makes would otherwise go\nnowhere anyone could ever see, including the errors you'd most want to\nsee, since there's no console window for the OS to attach in the first\nplace.\n\nNEVER run this file directly -- it expects its stdin connected to a pipe\nby client.py and does nothing useful stand-alone. Reads newline-delimited\nUTF-8 text lines from stdin and renders them in a scrolling monospace\nview; exits when that pipe closes (client.py exited).\n\"\"\"\n\nimport os\nimport queue\nimport sys\nimport threading\n\nimport pygame\n\nMARGIN = 8\nMAX_LINES = 5000\nMIN_WINDOW_WIDTH = 300\nMIN_WINDOW_HEIGHT = 150\n\n\ndef line_color(line):\n    \"\"\"Cheap, tag-based color-coding so errors/warnings jump out while\n    scanning a long log -- matches this project's own [tag]-prefixed\n    print() convention and daemon.py's [LEVEL] logging format closely\n    enough to catch both without needing to parse either precisely.\"\"\"\n    lower = line.lower()\n    if \"error\" in lower or \"traceback\" in lower or \"exception\" in lower:\n        return (240, 90, 90)\n    if \"warning\" in lower:\n        return (230, 190, 90)\n    return (220, 220, 220)\n\n\ndef _read_lines(i
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:27:38 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+File created successfully at: c:\Users\Marco\Documents\GitHub\KVMDongle\debug_log_window.py (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:27:43 AM</sup>
+
+Now let's add the `_LogBuffer`/`_StreamTee` infrastructure and `DebugLogWindow` controller to `client.py`:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:27:53 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "# Windows-only, optional: lets the Video menu show real device names\n# (e.g. \"Logitech C920\") instead of just \"Device N\" -- OpenCV itself has\n# no portable way to ask for this. See capture_device_names().\ntry:\n    from pygrabber.dshow_graph import FilterGraph\nexcept ImportError:\n    FilterGraph = None",
+  "new_string": "# Windows-only, optional: lets the Video menu show real device names\n# (e.g. \"Logitech C920\") instead of just \"Device N\" -- OpenCV itself has\n# no portable way to ask for this. See capture_device_names().\ntry:\n    from pygrabber.dshow_graph import FilterGraph\nexcept ImportError:\n    FilterGraph = None\n\n\nclass _LogBuffer:\n    \"\"\"Bounded, thread-safe backing store for the Debug Log window --\n    every complete line this process prints (see _StreamTee) lands here,\n    regardless of whether that window is even open yet, so opening it\n    later still shows everything printed since startup, not just\n    whatever's printed from that point on.\"\"\"\n\n    MAX_LINES = 2000\n\n    def __init__(self):\n        self.lines = []\n        self._lock = threading.Lock()\n        self._listeners = []\n\n    def append_line(self, line):\n        with self._lock:\n            self.lines.append(line)\n            if len(self.lines) > self.MAX_LINES:\n                del self.lines[:len(self.lines) - self.MAX_LINES]\n            listeners = list(self._listeners)\n        for listener in listeners:\n            listener(line)\n\n    def snapshot(self):\n        with self._lock:\n            return list(self.lines)\n\n    def add_listener(self, fn):\n        with self._lock:\n            self._listeners.append(fn)\n\n    def remove_listener(self, fn):\n        with self._lock:\n            if fn in self._listeners:\n                self._listeners.remove(fn)\n\n\nclass _StreamTee:\n    \"\"\"Wraps a real stream (or None -- sy
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:27:54 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:27:58 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:27:59 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "^class TerminalWindow:",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:27:59 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+978:class TerminalWindow:
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:28:04 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1065,
+  "limit": 20
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:28:04 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1065	        close it in their own time, same as a real terminal emulator
+1066	        noticing its child process exited.
+1067	
+1068	        Deliberately does NOT wait for or terminate the child here, unlike
+1069	        close() -- this was a real bug: forcibly killing the window ~1s
+1070	        after telling it the session closed defeated the entire point of
+1071	        showing the banner and letting the user close it themselves. The
+1072	        child process is left to run independently; _read_loop's own EOF
+1073	        handling (already idempotent) cleans up once it eventually exits
+1074	        on its own, whenever the user actually closes that window."""
+1075	        if not self.is_open:
+1076	            return
+1077	        self.is_open = False
+1078	        if self.proc is not None and self.proc.poll() is None:
+1079	            try:
+1080	                self.proc.stdin.write(protocol.encode_shell_closed())
+1081	                self.proc.stdin.flush()
+1082	            except (B
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:28:16 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1084,
+  "limit": 30
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:28:16 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1084	        self.proc = None  # not ours to track/wait on anymore -- let it linger
+1085	
+1086	    def close(self):
+1087	        """The user asked (Terminal menu) to end the session right now --
+1088	        unlike notify_closed(), this really does end the window, since the
+1089	        user explicitly asked for it to close rather than the Pi's shell
+1090	        ending unprompted."""
+1091	        if not self.is_open:
+1092	            return
+1093	        self.link.send_shell_close()
+1094	        self.is_open = False
+1095	        if self.proc is not None:
+1096	            if self.proc.poll() is None:
+1097	                try:
+1098	                    self.proc.stdin.write(protocol.encode_shell_closed())
+1099	                    self.proc.stdin.flush()
+1100	                except (BrokenPipeError, OSError):
+1101	                    pass
+1102	            try:
+1103	                self.proc.wait(timeout=1)
+1104	            except subprocess.TimeoutExpired:
+1105	                self.proc.te
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:28:22 AM</sup>
+
+Let's insert the `DebugLogWindow` class right after `TerminalWindow`:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:28:29 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "            try:\n                self.proc.wait(timeout=1)\n            except subprocess.TimeoutExpired:\n                self.proc.terminate()\n            self.proc = None\n\n\ndef _fix_windows_dpi_scaling():",
+  "new_string": "            try:\n                self.proc.wait(timeout=1)\n            except subprocess.TimeoutExpired:\n                self.proc.terminate()\n            self.proc = None\n\n\nclass DebugLogWindow:\n    \"\"\"Controller for a separate OS window showing everything this\n    process has printed to stdout/stderr (see _LogBuffer/_StreamTee) --\n    the only way to see any of this app's own diagnostic output at all\n    once packaged as a windowed/console-less standalone application\n    (no terminal for the OS to attach in the first place).\n\n    Mirrors TerminalWindow's separate-process design (pygame/SDL only\n    supports one window per process) but much simpler: purely\n    one-directional -- log lines out, nothing ever comes back -- so there's\n    no reader thread, no protocol framing, just newline-delimited text\n    written to the child's stdin.\"\"\"\n\n    SCRIPT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), \"debug_log_window.py\")\n\n    def __init__(self, buffer):\n        self.buffer = buffer\n        self.proc = None\n        self.is_open = False\n\n    def open(self):\n        if self.is_open:\n            return\n        try:\n            self.proc = subprocess.Popen([sys.executable, self.SCRIPT_PATH], stdin=subprocess.PIPE)\n        except OSError as e:\n            print(f\"[debug log] could not launch debug log window: {e}\")\n            return\n        self.is_open = True\n        # Replay everything already logged before this window existed --\n        # opening it late shouldn't mean missing the startup messages.\n        for line in self.buffer.snapshot():\n            self._se
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:28:31 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:28:43 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:28:43 AM</sup>
+
+Let's add a lock to `_send_line` since it can be called concurrently from multiple threads (any thread that calls `print()`) via the buffer's listener callback:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:28:44 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1122,
+  "limit": 18
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:28:44 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1122	    SCRIPT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "debug_log_window.py")
+1123	
+1124	    def __init__(self, buffer):
+1125	        self.buffer = buffer
+1126	        self.proc = None
+1127	        self.is_open = False
+1128	
+1129	    def open(self):
+1130	        if self.is_open:
+1131	            return
+1132	        try:
+1133	            self.proc = subprocess.Popen([sys.executable, self.SCRIPT_PATH], stdin=subprocess.PIPE)
+1134	        except OSError as e:
+1135	            print(f"[debug log] could not launch debug log window: {e}")
+1136	            return
+1137	        self.is_open = True
+1138	        # Replay everything already logged before this window existed --
+1139	        # opening it late shouldn't mean missing the startup messages.
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:28:51 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    def __init__(self, buffer):\n        self.buffer = buffer\n        self.proc = None\n        self.is_open = False",
+  "new_string": "    def __init__(self, buffer):\n        self.buffer = buffer\n        self.proc = None\n        self.is_open = False\n        # _send_line runs as the buffer's listener callback, which fires\n        # from whatever thread happens to print() something -- the\n        # background serial reader thread included -- so concurrent calls\n        # are a real, not just theoretical, possibility. Guards the\n        # write+flush pair so two threads' lines can't interleave into a\n        # corrupted line in the child's stream.\n        self._write_lock = threading.Lock()"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:28:53 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:28:57 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1145,
+  "limit": 14
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:28:57 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1145	        # Replay everything already logged before this window existed --
+1146	        # opening it late shouldn't mean missing the startup messages.
+1147	        for line in self.buffer.snapshot():
+1148	            self._send_line(line)
+1149	        self.buffer.add_listener(self._send_line)
+1150	
+1151	    def _send_line(self, line):
+1152	        if self.proc is None or self.proc.poll() is not None:
+1153	            self.is_open = False
+1154	            return
+1155	        try:
+1156	            self.proc.stdin.write((line + "\n").encode("utf-8", errors="replace"))
+1157	            self.proc.stdin.flush()
+1158	        except (BrokenPipeError, OSError):
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:29:04 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    def _send_line(self, line):\n        if self.proc is None or self.proc.poll() is not None:\n            self.is_open = False\n            return\n        try:\n            self.proc.stdin.write((line + \"\\n\").encode(\"utf-8\", errors=\"replace\"))\n            self.proc.stdin.flush()\n        except (BrokenPipeError, OSError):",
+  "new_string": "    def _send_line(self, line):\n        with self._write_lock:\n            if self.proc is None or self.proc.poll() is not None:\n                self.is_open = False\n                return\n            try:\n                self.proc.stdin.write((line + \"\\n\").encode(\"utf-8\", errors=\"replace\"))\n                self.proc.stdin.flush()\n            except (BrokenPipeError, OSError):"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:29:05 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:29:10 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:29:10 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1151,
+  "limit": 12
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:29:10 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1151	    def _send_line(self, line):
+1152	        with self._write_lock:
+1153	            if self.proc is None or self.proc.poll() is not None:
+1154	                self.is_open = False
+1155	                return
+1156	            try:
+1157	                self.proc.stdin.write((line + "\n").encode("utf-8", errors="replace"))
+1158	                self.proc.stdin.flush()
+1159	            except (BrokenPipeError, OSError):
+1160	            self.is_open = False
+1161	
+1162	    def close(self):
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:29:16 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "            except (BrokenPipeError, OSError):\n            self.is_open = False\n\n    def close(self):",
+  "new_string": "            except (BrokenPipeError, OSError):\n                self.is_open = False\n\n    def close(self):"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:29:17 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:29:24 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:29:24 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1162,
+  "limit": 14
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:29:24 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1162	    def close(self):
+1163	        if not self.is_open:
+1164	            return
+1165	        self.is_open = False
+1166	        self.buffer.remove_listener(self._send_line)
+1167	        if self.proc is not None:
+1168	            if self.proc.poll() is None:
+1169	                self.proc.terminate()
+1170	                try:
+1171	                    self.proc.wait(timeout=1)
+1172	                except subprocess.TimeoutExpired:
+1173	                    self.proc.kill()
+1174	            self.proc = None
+1175
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:29:33 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    def close(self):\n        if not self.is_open:\n            return\n        self.is_open = False\n        self.buffer.remove_listener(self._send_line)\n        if self.proc is not None:\n            if self.proc.poll() is None:\n                self.proc.terminate()\n                try:\n                    self.proc.wait(timeout=1)\n                except subprocess.TimeoutExpired:\n                    self.proc.kill()\n            self.proc = None",
+  "new_string": "    def close(self):\n        if not self.is_open:\n            return\n        self.is_open = False\n        self.buffer.remove_listener(self._send_line)\n        with self._write_lock:\n            if self.proc is not None:\n                if self.proc.poll() is None:\n                    self.proc.terminate()\n                    try:\n                        self.proc.wait(timeout=1)\n                    except subprocess.TimeoutExpired:\n                        self.proc.kill()\n                self.proc = None"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:29:35 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:29:40 AM</sup>
+
+Now let's wire this into `main()`: install the log relay first thing, create the controller, add a menu item, and clean up on exit.
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:29:40 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1173,
+  "limit": 15
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:29:40 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1173	                    except subprocess.TimeoutExpired:
+1174	                        self.proc.kill()
+1175	                self.proc = None
+1176	
+1177	
+1178	def _fix_windows_dpi_scaling():
+1179	    """Without this, Windows treats the process as DPI-unaware and scales
+1180	    the whole window via bitmap stretching to match the display's scale
+1181	    factor (125%/150%/etc, common on laptop screens) -- which blurs
+1182	    everything, and the blur gets more visually obvious the more fine
+1183	    detail (small text, UI chrome) is in the source, i.e. exactly "grainy
+1184	    and unreadable at higher resolutions." DPI-aware apps like OBS declare
+1185	    this and never get stretched.
+1186	
+1187	    This MUST go through SDL's own mechanism (the SDL_WINDOWS_DPI_AWARENESS
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:29:45 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "^def main\\(\\):",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:29:45 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1205:def main():
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:29:52 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1205,
+  "limit": 10
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:29:52 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1205	def main():
+1206	    _fix_windows_dpi_scaling()
+1207	
+1208	    parser = argparse.ArgumentParser(description="Laptop crash cart: video + keyboard/mouse/storage bridge")
+1209	    parser.add_argument("--serial-port", default=None,
+1210	                         help="COM port / tty for the Pi's control link -- omit to auto-select "
+1211	                              "the first detected serial port")
+1212	    parser.add_argument("--capture-index", type=int, default=None, help="OpenCV capture device index")
+1213	    parser.add_argument("--capture-width", type=int, default=1920,
+1214	                         help="request this capture width (default 1920 -- without an explicit "
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:29:59 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "def main():\n    _fix_windows_dpi_scaling()\n\n    parser = argparse.ArgumentParser(description=\"Laptop crash cart: video + keyboard/mouse/storage bridge\")",
+  "new_string": "def main():\n    # Installed before anything else prints a single line -- a packaged,\n    # windowed standalone build (PyInstaller --noconsole on Windows, a\n    # macOS .app bundle, ...) has no terminal at all, so every print()\n    # below would otherwise go nowhere anyone could ever see. Safe even\n    # when a real console IS attached: _StreamTee still writes through to\n    # it unchanged, this only adds a second destination.\n    log_buffer = _LogBuffer()\n    sys.stdout = _StreamTee(sys.stdout, log_buffer)\n    sys.stderr = _StreamTee(sys.stderr, log_buffer)\n\n    _fix_windows_dpi_scaling()\n\n    parser = argparse.ArgumentParser(description=\"Laptop crash cart: video + keyboard/mouse/storage bridge\")"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:30:01 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:30:06 AM</sup>
+
+Now let's find where `terminal = TerminalWindow(link)` is constructed, to add `debug_log` alongside it:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:30:07 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "terminal = TerminalWindow\\(link\\)",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:30:07 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1307:    terminal = TerminalWindow(link)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:30:11 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1300,
+  "limit": 14
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:30:11 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1300	    # never sets any of these bits.
+1301	    held_target_buttons = 0
+1302	
+1303	    video_state = VideoState(capture_index)
+1304	    port_state = PortState(serial_port)
+1305	    storage = StorageState()
+1306	    network = NetworkState()
+1307	    terminal = TerminalWindow(link)
+1308	    reboot_arm = ArmedAction()
+1309	    shutdown_arm = ArmedAction()
+1310	
+1311	    running = True
+1312	
+1313	    def do_macro(usage_ids, label):
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:30:16 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    terminal = TerminalWindow(link)\n    reboot_arm = ArmedAction()\n    shutdown_arm = ArmedAction()",
+  "new_string": "    terminal = TerminalWindow(link)\n    debug_log = DebugLogWindow(log_buffer)\n    reboot_arm = ArmedAction()\n    shutdown_arm = ArmedAction()"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:30:17 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:30:21 AM</sup>
+
+Now let's add the menu item and toggle function in `terminal_menu_items()`:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:30:22 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "def terminal_menu_items|def do_toggle_terminal",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:30:22 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1324:    def do_toggle_terminal():
+1354:    def terminal_menu_items():
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:30:27 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1324,
+  "limit": 40
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:30:27 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1324	    def do_toggle_terminal():
+1325	        if terminal.is_open:
+1326	            terminal.close()
+1327	        else:
+1328	            terminal.open()
+1329	
+1330	    def do_restart_daemon():
+1331	        print("[power] restarting the Pi's daemon")
+1332	        link.send_restart_daemon()
+1333	
+1334	    def do_reboot():
+1335	        if reboot_arm.is_armed():
+1336	            reboot_arm.disarm()
+1337	            print("[power] rebooting the Pi")
+1338	            link.send_reboot_pi()
+1339	            return False  # confirmed and fired -- close the dropdown, as usual
+1340	        shutdown_arm.disarm()
+1341	        reboot_arm.arm()
+1342	        return True  # just armed -- keep the dropdown open for the confirm click
+1343	
+1344	    def do_shutdown():
+1345	        if shutdown_arm.is_armed():
+1346	            shutdown_arm.disarm()
+1347	            print("[power] shutting down the Pi")
+1348	            link.send_shutdown_pi()
+1349	            return False
+1350	        reboot_arm.disarm()
+
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:30:34 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    def do_toggle_terminal():\n        if terminal.is_open:\n            terminal.close()\n        else:\n            terminal.open()",
+  "new_string": "    def do_toggle_terminal():\n        if terminal.is_open:\n            terminal.close()\n        else:\n            terminal.open()\n\n    def do_toggle_debug_log():\n        if debug_log.is_open:\n            debug_log.close()\n        else:\n            debug_log.open()"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:30:35 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:30:40 AM</sup>
+
+Now let's add the menu item to `terminal_menu_items()`:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:30:41 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "        shutdown_label = \"Shutdown Pi (click again to confirm)\" if shutdown_arm.is_armed() else \"Shutdown Pi\"\n        items.append((shutdown_label, \"\", do_shutdown))\n        return items",
+  "new_string": "        shutdown_label = \"Shutdown Pi (click again to confirm)\" if shutdown_arm.is_armed() else \"Shutdown Pi\"\n        items.append((shutdown_label, \"\", do_shutdown))\n        debug_log_label = \"Close Debug Log\" if debug_log.is_open else \"Open Debug Log\"\n        items.append((debug_log_label, \"\", do_toggle_debug_log))\n        return items"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:30:43 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:30:50 AM</sup>
+
+Now let's add cleanup at the end of `main()`, mirroring how `terminal` gets closed on exit:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:30:52 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "if terminal.is_open:\\s*$|terminal\\.close\\(\\)",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:30:52 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1325:        if terminal.is_open:
+1326:            terminal.close()
+1741:    if terminal.is_open:
+1742:        terminal.close()
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:30:57 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1730,
+  "limit": 18
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:30:57 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1730	                        print(f"[MOUSE SCROLL] amount={event.y}")
+1731	
+1732	        clock.tick(60)
+1733	
+1734	    # release any keys still held down before exiting
+1735	    for usage_id in active_keys.values():
+1736	        link.send_key(False, usage_id)
+1737	
+1738	    # Tell the Pi to end the shell session and close the terminal window's
+1739	    # process too -- otherwise a still-open bash process (and an orphaned
+1740	    # window) would sit there indefinitely after we exit.
+1741	    if terminal.is_open:
+1742	        terminal.close()
+1743	
+1744	    video.release()
+1745	    link.close()
+1746	    pygame.quit()
+1747
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:31:02 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    # Tell the Pi to end the shell session and close the terminal window's\n    # process too -- otherwise a still-open bash process (and an orphaned\n    # window) would sit there indefinitely after we exit.\n    if terminal.is_open:\n        terminal.close()\n\n    video.release()",
+  "new_string": "    # Tell the Pi to end the shell session and close the terminal window's\n    # process too -- otherwise a still-open bash process (and an orphaned\n    # window) would sit there indefinitely after we exit.\n    if terminal.is_open:\n        terminal.close()\n\n    if debug_log.is_open:\n        debug_log.close()\n\n    video.release()"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:31:04 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:31:10 AM</sup>
+
+Now let's compile-check and run the full regression suite:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:31:10 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; .\\.venv\\Scripts\\python.exe -m py_compile client.py debug_log_window.py; if ($?) { \"compile OK\" }"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:31:20 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+compile OK
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:31:27 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; $scratch = \"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\"; $files = Get-ChildItem \"$scratch\\test_*.py\" | Where-Object { $_.Name -ne \"test_terminal_overlay.py\" }; $failed = 0; foreach ($f in $files) { .\\.venv\\Scripts\\python.exe $f.FullName | Out-Null; if (-not $?) { Write-Host \"FAILED: $($f.Name)\" -ForegroundColor Red; $failed++ } }; if ($failed -eq 0) { \"ALL TEST FILES PASSED\" }"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:31:54 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+2026-08-09 03:31:33,819 [WARNING] dropped HID report to hidg1: endpoint still busy after 5 retries
+2026-08-09 03:31:33,820 [WARNING] failed to write HID report to hidg1: device gone
+2026-08-09 03:31:34,269 [INFO] invoking: systemctl restart kvmdongle-daemon
+2026-08-09 03:31:34,269 [INFO] invoking: systemctl reboot
+2026-08-09 03:31:34,269 [INFO] invoking: systemctl poweroff
+2026-08-09 03:31:34,269 [INFO] invoking: systemctl reboot
+2026-08-09 03:31:34,269 [WARNING] could not launch systemctl: no such file or directory: systemctl
+ALL TEST FILES PASSED
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:32:02 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:32:02 AM</sup>
+
+Now let's add a dedicated test file for this new infrastructure, following the same rigor as the terminal window tests:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:32:24 AM</sup>
+
+<details>
+<summary>Tool: <code>Write</code></summary>
+
+```json
+{
+  "file_path": "C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_debug_log.py",
+  "content": "import os\nimport subprocess\nimport sys\nimport threading\nimport time\n\nsys.path.insert(0, r\"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\fake_pygame_pkg\")\nsys.path.insert(0, r\"c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\")\n\nimport pygame  # the fake stub\nimport client\nimport debug_log_window as dlw\n\n\ndef wait_until(cond, timeout=2.0):\n    deadline = time.monotonic() + timeout\n    while time.monotonic() < deadline:\n        if cond():\n            return True\n        time.sleep(0.01)\n    return False\n\n\n# --- _LogBuffer: append/snapshot/listeners/eviction -----------------------\nbuf = client._LogBuffer()\nbuf.MAX_LINES = 5  # small, to exercise eviction without a huge loop\n\nheard = []\nbuf.add_listener(lambda line: heard.append(line))\n\nfor i in range(8):\n    buf.append_line(f\"line{i}\")\n\nassert buf.snapshot() == [\"line3\", \"line4\", \"line5\", \"line6\", \"line7\"], buf.snapshot()\nassert heard == [f\"line{i}\" for i in range(8)], heard\nprint(\"_LogBuffer append/snapshot/eviction/listener OK\")\n\nbuf.remove_listener(heard.append) if heard.append in buf._listeners else None  # no-op guard\n# proper removal path:\nlistener = buf._listeners[0]\nbuf.remove_listener(listener)\nbuf.append_line(\"line8\")\nassert heard[-1] == \"line7\", \"removed listener must not be called again\"\nprint(\"_LogBuffer remove_listener OK\")\n\n# --- _StreamTee: buffers partial writes into complete lines, tees through\n# to the real stream, and tolerates real_stream=None (the actual scenario\n# on a windowed/console-less standalone build). ---\nclass FakeStream:\n    def __init__(self):\n        self.written = []\n\n    def write(self, text):\n        self.written.append(t
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:32:25 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+File created successfully at: C:\Users\Marco\AppData\Local\Temp\claude\c--Users-Marco-Documents-GitHub-KVMDongle\0a01b7e4-f584-446c-847d-90e75b76e0b5\scratchpad\test_debug_log.py (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:32:30 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:32:32 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_debug_log.py",
+  "old_string": "buf.remove_listener(heard.append) if heard.append in buf._listeners else None  # no-op guard\n# proper removal path:\nlistener = buf._listeners[0]",
+  "new_string": "listener = buf._listeners[0]"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:32:33 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file C:\Users\Marco\AppData\Local\Temp\claude\c--Users-Marco-Documents-GitHub-KVMDongle\0a01b7e4-f584-446c-847d-90e75b76e0b5\scratchpad\test_debug_log.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:32:37 AM</sup>
+
+Now let's run this test:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:32:38 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; .\\.venv\\Scripts\\python.exe \"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_debug_log.py\""
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:34:42 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+Command did not complete within its 120s timeout and was moved to the background (ID: b0wsh53tb). Output is being written to: C:\Users\Marco\AppData\Local\Temp\claude\c--Users-Marco-Documents-GitHub-KVMDongle\b2d8841a-7434-4615-9fcb-f34f5020c07a\tasks\b0wsh53tb.output. You will be notified when it completes. To check interim output, use Read on that file path.
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:34:50 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:34:50 AM</sup>
+
+That hung on a blocking read — let me fix the test (should have used a non-blocking check) and kill the stuck background process first.
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:34:50 AM</sup>
+
+<details>
+<summary>Tool: <code>TaskOutput</code></summary>
+
+```json
+{
+  "task_id": "b0wsh53tb",
+  "block": true,
+  "timeout": 30000
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:35:20 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+<retrieval_status>timeout</retrieval_status>
+
+<task_id>b0wsh53tb</task_id>
+
+<task_type>local_bash</task_type>
+
+<status>running</status>
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:35:25 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:35:25 AM</sup>
+
+<details>
+<summary>Tool: <code>TaskStop</code></summary>
+
+```json
+{
+  "task_id": "b0wsh53tb"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:35:25 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+{"message":"Successfully stopped task: b0wsh53tb (cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; .\\.venv\\Scripts\\python.exe \"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_debug_log.py\")","task_id":"b0wsh53tb","task_type":"local_bash","command":"cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; .\\.venv\\Scripts\\python.exe \"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_debug_log.py\""}
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:35:29 AM</sup>
+
+Now let's fix the test — use a non-blocking read instead of a plain blocking `os.read()`:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:35:30 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_debug_log.py",
+  "old_string": "import os\nimport subprocess\nimport sys\nimport threading\nimport time",
+  "new_string": "import os\nimport select\nimport subprocess\nimport sys\nimport threading\nimport time"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:35:32 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file C:\Users\Marco\AppData\Local\Temp\claude\c--Users-Marco-Documents-GitHub-KVMDongle\0a01b7e4-f584-446c-847d-90e75b76e0b5\scratchpad\test_debug_log.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:36:11 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:36:13 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_debug_log.py",
+  "old_string": "import os\nimport select\nimport subprocess\nimport sys\nimport threading\nimport time",
+  "new_string": "import os\nimport subprocess\nimport sys\nimport threading\nimport time"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:36:14 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file C:\Users\Marco\AppData\Local\Temp\claude\c--Users-Marco-Documents-GitHub-KVMDongle\0a01b7e4-f584-446c-847d-90e75b76e0b5\scratchpad\test_debug_log.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:36:20 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:36:24 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_debug_log.py",
+  "old_string": "def read_lines(pipe_file, count, timeout=2.0):",
+  "new_string": "def nothing_arrives_within(pipe_file, timeout=0.3):\n    \"\"\"True if a read on pipe_file doesn't complete within timeout --\n    os.read() blocks indefinitely with nothing available, and select()\n    only works on sockets on Windows, so this proves \"no data arrived\" by\n    running the blocking read on a throwaway daemon thread and just not\n    waiting for it to finish. If it never completes, the thread leaks\n    (harmless -- it dies with the process), but the test doesn't hang.\"\"\"\n    result = {\"data\": None}\n\n    def reader():\n        try:\n            result[\"data\"] = os.read(pipe_file.fileno(), 4096)\n        except OSError:\n            result[\"data\"] = b\"\"\n\n    t = threading.Thread(target=reader, daemon=True)\n    t.start()\n    t.join(timeout)\n    return result[\"data\"] is None\n\n\ndef read_lines(pipe_file, count, timeout=2.0):"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:36:25 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file C:\Users\Marco\AppData\Local\Temp\claude\c--Users-Marco-Documents-GitHub-KVMDongle\0a01b7e4-f584-446c-847d-90e75b76e0b5\scratchpad\test_debug_log.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:36:33 AM</sup>
+
+Now let's fix the actual assertion that was using the hanging pattern:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:36:36 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_debug_log.py",
+  "old_string": "buf3.append_line(\"should not be relayed, window is closed\")\nassert not wait_until(lambda: os.read(fake_proc.child_reads_from.fileno(), 4096) != b\"\", timeout=0.2), \\\n    \"closed window must not still be receiving lines\"\nprint(\"DebugLogWindow.close() detaches listener + terminates process OK\")",
+  "new_string": "buf3.append_line(\"should not be relayed, window is closed\")\nassert nothing_arrives_within(fake_proc.child_reads_from, timeout=0.3), \\\n    \"closed window must not still be receiving lines\"\nprint(\"DebugLogWindow.close() detaches listener + terminates process OK\")"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:36:37 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file C:\Users\Marco\AppData\Local\Temp\claude\c--Users-Marco-Documents-GitHub-KVMDongle\0a01b7e4-f584-446c-847d-90e75b76e0b5\scratchpad\test_debug_log.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:36:44 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:36:45 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; .\\.venv\\Scripts\\python.exe \"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_debug_log.py\"",
+  "timeout": 30000
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:36:51 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+_LogBuffer append/snapshot/eviction/listener OK
+_LogBuffer remove_listener OK
+_StreamTee splits into complete lines + tees through OK
+_StreamTee tolerates real_stream=None OK
+DebugLogWindow.open() replays history then relays new lines OK
+DebugLogWindow.close() detaches listener + terminates process OK
+DebugLogWindow double-close is a safe no-op OK
+DebugLogWindow survives concurrent print()-from-multiple-threads without corrupting lines OK
+debug_log_window.line_color() tags errors/warnings distinctly OK
+ALL DEBUG LOG TESTS PASSED
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:36:55 AM</sup>
+
+All tests pass now, including the concurrency stress test. Let's clean up the unused `wait_until` helper and run the full regression suite one more time:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:36:57 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "wait_until",
+  "path": "C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_debug_log.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:36:57 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+15:def wait_until(cond, timeout=2.0):
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:37:03 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_debug_log.py",
+  "offset": 1,
+  "limit": 22
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:37:03 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1	import os
+2	import subprocess
+3	import sys
+4	import threading
+5	import time
+6	
+7	sys.path.insert(0, r"C:\Users\Marco\AppData\Local\Temp\claude\c--Users-Marco-Documents-GitHub-KVMDongle\0a01b7e4-f584-446c-847d-90e75b76e0b5\scratchpad\fake_pygame_pkg")
+8	sys.path.insert(0, r"c:\Users\Marco\Documents\GitHub\KVMDongle")
+9	
+10	import pygame  # the fake stub
+11	import client
+12	import debug_log_window as dlw
+13	
+14	
+15	def wait_until(cond, timeout=2.0):
+16	    deadline = time.monotonic() + timeout
+17	    while time.monotonic() < deadline:
+18	        if cond():
+19	            return True
+20	        time.sleep(0.01)
+21	    return False
+22
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:37:08 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_debug_log.py",
+  "old_string": "import pygame  # the fake stub\nimport client\nimport debug_log_window as dlw\n\n\ndef wait_until(cond, timeout=2.0):\n    deadline = time.monotonic() + timeout\n    while time.monotonic() < deadline:\n        if cond():\n            return True\n        time.sleep(0.01)\n    return False\n",
+  "new_string": "import pygame  # the fake stub\nimport client\nimport debug_log_window as dlw\n"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:37:09 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file C:\Users\Marco\AppData\Local\Temp\claude\c--Users-Marco-Documents-GitHub-KVMDongle\0a01b7e4-f584-446c-847d-90e75b76e0b5\scratchpad\test_debug_log.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:37:18 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:37:19 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; .\\.venv\\Scripts\\python.exe \"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_debug_log.py\"",
+  "timeout": 30000
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:37:22 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+_LogBuffer append/snapshot/eviction/listener OK
+_LogBuffer remove_listener OK
+_StreamTee splits into complete lines + tees through OK
+_StreamTee tolerates real_stream=None OK
+DebugLogWindow.open() replays history then relays new lines OK
+DebugLogWindow.close() detaches listener + terminates process OK
+DebugLogWindow double-close is a safe no-op OK
+DebugLogWindow survives concurrent print()-from-multiple-threads without corrupting lines OK
+debug_log_window.line_color() tags errors/warnings distinctly OK
+ALL DEBUG LOG TESTS PASSED
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:37:27 AM</sup>
+
+Now the full regression suite:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:37:29 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; $scratch = \"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\"; $files = Get-ChildItem \"$scratch\\test_*.py\" | Where-Object { $_.Name -ne \"test_terminal_overlay.py\" }; $failed = 0; foreach ($f in $files) { .\\.venv\\Scripts\\python.exe $f.FullName | Out-Null; if (-not $?) { Write-Host \"FAILED: $($f.Name)\" -ForegroundColor Red; $failed++ } }; if ($failed -eq 0) { \"ALL TEST FILES PASSED\" }",
+  "timeout": 60000
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:38:00 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+2026-08-09 03:37:39,476 [WARNING] dropped HID report to hidg1: endpoint still busy after 5 retries
+2026-08-09 03:37:39,477 [WARNING] failed to write HID report to hidg1: device gone
+2026-08-09 03:37:39,927 [INFO] invoking: systemctl restart kvmdongle-daemon
+2026-08-09 03:37:39,927 [INFO] invoking: systemctl reboot
+2026-08-09 03:37:39,928 [INFO] invoking: systemctl poweroff
+2026-08-09 03:37:39,928 [INFO] invoking: systemctl reboot
+2026-08-09 03:37:39,928 [WARNING] could not launch systemctl: no such file or directory: systemctl
+ALL TEST FILES PASSED
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:38:06 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:38:06 AM</sup>
+
+Let's also do a live smoke test with the real subprocess and real pygame, same as we did for the terminal window earlier:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:38:11 AM</sup>
+
+<details>
+<summary>Tool: <code>Write</code></summary>
+
+```json
+{
+  "file_path": "C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\smoke_debug_log_window.py",
+  "content": "import subprocess\nimport sys\nimport time\n\nscript = r\"c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\debug_log_window.py\"\nproc = subprocess.Popen([sys.executable, script], stdin=subprocess.PIPE)\n\ntime.sleep(1.0)\nif proc.poll() is not None:\n    print(f\"FAILED: child exited early with code {proc.returncode}\")\n    sys.exit(1)\nprint(\"child process is alive after startup OK\")\n\nfor i in range(50):\n    proc.stdin.write(f\"line {i}: some ordinary log output\\n\".encode())\nproc.stdin.write(b\"[WARNING] something looked off\\n\")\nproc.stdin.write(b\"[ERROR] something actually broke\\n\")\nproc.stdin.flush()\n\ntime.sleep(0.5)\nif proc.poll() is not None:\n    print(f\"FAILED: child crashed after receiving lines, code {proc.returncode}\")\n    sys.exit(1)\nprint(\"child survived a burst of lines including warning/error tags OK\")\n\nproc.stdin.close()  # simulate client.py exiting -- pipe closes\ntime.sleep(0.5)\nif proc.poll() is None:\n    print(\"FAILED: child did not exit after its stdin pipe closed\")\n    proc.terminate()\n    sys.exit(1)\nprint(\"child exited cleanly when its stdin pipe closed OK\")\n\nprint(\"SMOKE TEST PASSED\")\n"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:38:12 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+File created successfully at: C:\Users\Marco\AppData\Local\Temp\claude\c--Users-Marco-Documents-GitHub-KVMDongle\0a01b7e4-f584-446c-847d-90e75b76e0b5\scratchpad\smoke_debug_log_window.py (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:38:17 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; .\\.venv\\Scripts\\python.exe \"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\smoke_debug_log_window.py\"",
+  "timeout": 30000
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:38:24 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+pygame-ce 2.5.7 (SDL 2.32.10, Python 3.14.2)
+child process is alive after startup OK
+child survived a burst of lines including warning/error tags OK
+child exited cleanly when its stdin pipe closed OK
+SMOKE TEST PASSED
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:38:29 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:38:29 AM</sup>
+
+Real end-to-end smoke test passes too. Let's document this in the docstring and README:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:38:30 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 65,
+  "limit": 15
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:38:30 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+65	      Wi-Fi upload page.
+66	    - Use Terminal > Open Pi Shell to run bash commands directly on the
+67	      Pi, over the same serial link -- opens in its own separate OS
+68	      window (not an overlay on the video), rendered with real colors/
+69	      cursor movement, like the shell half of an SSH session (requires
+70	      `pip install pyte`). That window has its own keyboard focus, so it
+71	      never steals input from the main KVM window or vice versa; press
+72	      F12 or just close the window to end the session.
+73	    - The Terminal menu also has Restart Daemon (one click), and Reboot
+74	      Pi / Shutdown Pi (click once to arm -- the label changes to prompt
+75	      a second click within ~4 seconds, or it just disarms itself). None
+76	      of these get a "success" reply, since whatever would send one (the
+77	      daemon process, or the whole machine) is exactly what's going away;
+78	      watch the connection light instead.
+79	    - Use Session > Quit in the menu bar, 
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:38:38 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:38:45 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    - Use Terminal > Open Pi Shell to run bash commands directly on the\n      Pi, over the same serial link -- opens in its own separate OS\n      window (not an overlay on the video), rendered with real colors/\n      cursor movement, like the shell half of an SSH session (requires\n      `pip install pyte`). That window has its own keyboard focus, so it\n      never steals input from the main KVM window or vice versa; press\n      F12 or just close the window to end the session.\n    - The Terminal menu also has Restart Daemon (one click), and Reboot\n      Pi / Shutdown Pi (click once to arm -- the label changes to prompt\n      a second click within ~4 seconds, or it just disarms itself). None\n      of these get a \"success\" reply, since whatever would send one (the\n      daemon process, or the whole machine) is exactly what's going away;\n      watch the connection light instead.",
+  "new_string": "    - Use Debug > Open Pi Shell to run bash commands directly on the\n      Pi, over the same serial link -- opens in its own separate OS\n      window (not an overlay on the video), rendered with real colors/\n      cursor movement, like the shell half of an SSH session (requires\n      `pip install pyte`). That window has its own keyboard focus, so it\n      never steals input from the main KVM window or vice versa; press\n      F12 or just close the window to end the session.\n    - The Debug menu also has Restart Daemon (one click), and Reboot\n      Pi / Shutdown Pi (click once to arm -- the label changes to prompt\n      a second click within ~4 seconds, or it just disarms itself). None\n      of these get a \"success\" reply, since whatever would send one (the\n      daemon process, or the whole machine) is exactly what's going away;\n      watch the connection light instead.\n    - Debug > Open Debug Log opens a separate window showing ev
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:38:47 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:38:51 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:38:52 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "Terminal menu|Terminal >|the Terminal",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:38:52 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+README.md:421:- **Terminal menu says "Open Pi Shell" but nothing happens, or the shell
+README.md:422:  window opens but the Pi never replies**: the Terminal feature added new
+client.py:1097:        """The user asked (Terminal menu) to end the session right now --
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:38:59 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:38:59 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "\\*\\*Terminal\\*\\* menu|\\*\\*Debug\\*\\* menu",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:38:59 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+180:- **Terminal** menu ("Open Pi Shell"): opens a real `bash` shell running
+194:- The **Terminal** menu also has three power commands for the Pi itself,
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:39:06 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:39:06 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "offset": 178,
+  "limit": 30
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:39:06 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+178	  per-OS code needed. Falls back to the bare port path if the OS doesn't
+179	  have a description for it.
+180	- **Terminal** menu ("Open Pi Shell"): opens a real `bash` shell running
+181	  on the Pi, over the same serial link, in its **own separate window** --
+182	  not an overlay on the video, so it has its own taskbar entry and can be
+183	  moved/resized/closed independently, and never steals keyboard/mouse
+184	  focus from the main KVM window or vice versa. Interactive programs,
+185	  colors, and cursor movement all work, so it looks and feels like an SSH
+186	  session even though it's carried entirely over the KB/mouse/storage
+187	  serial cable (no network involved). Press **F12** or just close the
+188	  window to end the session; if the Pi's shell exits on its own (e.g. you
+189	  typed `exit`), the window shows that and waits for you to close it,
+190	  same as a real terminal emulator noticing its process ended. Requires
+191	  the `pyte` package (see `requirements.txt`) -- if
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:39:12 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "offset": 207,
+  "limit": 14
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:39:12 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+207	    undo.
+208	  
+209	  None of these three get a "success" reply -- whatever would send one
+210	  (the daemon process, or the whole machine) is exactly what's about to
+211	  go away, so watch the connection-status light instead: it goes red
+212	  once the Pi stops responding, same as any other disconnect.
+213	- **Session > Quit** or the window's close button to exit.
+214	
+215	Expect **1-5 seconds** after mounting/ejecting before the target's OS
+216	actually notices the disc change -- that's the target polling for
+217	removable media, not something the Pi/client can speed up.
+218	
+219	## Adding more ISOs later (phase 2: Wi-Fi upload)
+220
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:39:18 AM</sup>
+
+Now let's fix the naming and add the Debug Log documentation:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:39:26 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "old_string": "- **Terminal** menu (\"Open Pi Shell\"): opens a real `bash` shell running\n  on the Pi, over the same serial link, in its **own separate window** --\n  not an overlay on the video, so it has its own taskbar entry and can be\n  moved/resized/closed independently, and never steals keyboard/mouse\n  focus from the main KVM window or vice versa. Interactive programs,\n  colors, and cursor movement all work, so it looks and feels like an SSH\n  session even though it's carried entirely over the KB/mouse/storage\n  serial cable (no network involved). Press **F12** or just close the\n  window to end the session; if the Pi's shell exits on its own (e.g. you\n  typed `exit`), the window shows that and waits for you to close it,\n  same as a real terminal emulator noticing its process ended. Requires\n  the `pyte` package (see `requirements.txt`) -- if it's missing, clicking\n  \"Open Pi Shell\" just prints a note to the terminal instead of opening\n  anything.\n- The **Terminal** menu also has three power commands for the Pi itself,\n  each of which shells out to `systemctl` on the Pi:",
+  "new_string": "- **Debug** menu (\"Open Pi Shell\"): opens a real `bash` shell running\n  on the Pi, over the same serial link, in its **own separate window** --\n  not an overlay on the video, so it has its own taskbar entry and can be\n  moved/resized/closed independently, and never steals keyboard/mouse\n  focus from the main KVM window or vice versa. Interactive programs,\n  colors, and cursor movement all work, so it looks and feels like an SSH\n  session even though it's carried entirely over the KB/mouse/storage\n  serial cable (no network involved). Press **F12** or just close the\n  window to end the session; if the Pi's shell exits on its own (e.g. you\n  typed `exit`), the window shows that and waits for you to close it,\n  same as a real terminal emulator noti
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:39:27 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\README.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:39:32 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:39:33 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "offset": 428,
+  "limit": 10
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:39:33 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+428	  `MOUSE_STATE` comment for the full explanation. This needs the same
+429	  `sudo ./install.sh` + restart-the-daemon step as the mouse-descriptor
+430	  change earlier, since it's a protocol change between `client.py` and
+431	  `pi/daemon.py`.
+432	- **Terminal menu says "Open Pi Shell" but nothing happens, or the shell
+433	  window opens but the Pi never replies**: the Terminal feature added new
+434	  frame types to `protocol.py` (`SHELL_OPEN`/`SHELL_INPUT`/`SHELL_OUTPUT`/
+435	  etc.) that a Pi still running an older `pi/daemon.py` doesn't know about
+436	  -- same as any other protocol change, this needs `sudo ./install.sh` +
+437	  a daemon restart on the Pi to pick up. Separately, if the `pyte`
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:39:38 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "old_string": "- **Terminal menu says \"Open Pi Shell\" but nothing happens, or the shell\n  window opens but the Pi never replies**: the Terminal feature added new",
+  "new_string": "- **Debug menu says \"Open Pi Shell\" but nothing happens, or the shell\n  window opens but the Pi never replies**: the Terminal feature added new"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:39:39 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\README.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:39:45 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:39:46 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "Terminal menu",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:39:46 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+No matches found
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:39:53 AM</sup>
+
+Good, all fixed. Let's fix the client.py docstring comment reference too:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:39:53 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1094,
+  "limit": 4
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:39:53 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1094	        self.proc = None  # not ours to track/wait on anymore -- let it linger
+1095	
+1096	    def close(self):
+1097	        """The user asked (Terminal menu) to end the session right now --
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:39:58 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    def close(self):\n        \"\"\"The user asked (Terminal menu) to end the session right now --",
+  "new_string": "    def close(self):\n        \"\"\"The user asked (Debug menu) to end the session right now --"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:40:00 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:40:04 AM</sup>
+
+Let's do a final compile check and full regression run to close this out:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:40:04 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; .\\.venv\\Scripts\\python.exe -m py_compile client.py debug_log_window.py; if ($?) { \"compile OK\" }"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:40:08 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+compile OK
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:40:15 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; $scratch = \"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\"; $files = Get-ChildItem \"$scratch\\test_*.py\" | Where-Object { $_.Name -ne \"test_terminal_overlay.py\" }; $failed = 0; foreach ($f in $files) { .\\.venv\\Scripts\\python.exe $f.FullName | Out-Null; if (-not $?) { Write-Host \"FAILED: $($f.Name)\" -ForegroundColor Red; $failed++ } }; if ($failed -eq 0) { \"ALL TEST FILES PASSED\" }",
+  "timeout": 60000
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:40:43 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+2026-08-09 03:40:22,634 [WARNING] dropped HID report to hidg1: endpoint still busy after 5 retries
+2026-08-09 03:40:22,634 [WARNING] failed to write HID report to hidg1: device gone
+2026-08-09 03:40:23,094 [INFO] invoking: systemctl restart kvmdongle-daemon
+2026-08-09 03:40:23,095 [INFO] invoking: systemctl reboot
+2026-08-09 03:40:23,095 [INFO] invoking: systemctl poweroff
+2026-08-09 03:40:23,095 [INFO] invoking: systemctl reboot
+2026-08-09 03:40:23,095 [WARNING] could not launch systemctl: no such file or directory: systemctl
+ALL TEST FILES PASSED
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:40:48 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:40:50 AM</sup>
+
+<details>
+<summary>Tool: <code>TodoWrite</code></summary>
+
+```json
+{
+  "todos": [
+    {
+      "content": "Add _LogBuffer/_StreamTee to capture all print() output globally",
+      "status": "completed",
+      "activeForm": "Adding log capture infrastructure"
+    },
+    {
+      "content": "Add debug_log_window.py child process (scrolling log viewer)",
+      "status": "completed",
+      "activeForm": "Writing debug_log_window.py"
+    },
+    {
+      "content": "Add DebugLogWindow controller + wire into Debug menu",
+      "status": "completed",
+      "activeForm": "Wiring DebugLogWindow controller"
+    },
+    {
+      "content": "Test coverage (buffer/tee/window/concurrency) + live smoke test",
+      "status": "completed",
+      "activeForm": "Testing debug log window"
+    },
+    {
+      "content": "Update docstring + README, fix stale 'Terminal menu' naming to 'Debug'",
+      "status": "completed",
+      "activeForm": "Updating docs"
+    },
+    {
+      "content": "Address 3-platform executable packaging request",
+      "status": "in_progress",
+      "activeForm": "Addressing packaging request"
+    }
+  ]
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:40:50 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+Todos have been modified successfully. Ensure that you continue to use the todo list to track your progress. Please proceed with the current tasks if applicable
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:41:00 AM</sup>
+
+The Debug Log feature is done — full write-up below, then let's talk packaging.
+
+**Debug Log window**: `client.py` now redirects its own `sys.stdout`/`sys.stderr` (installed as literally the first thing in `main()`) through a `_StreamTee` that still writes to the real console when one exists, but also feeds every complete line into a shared, bounded `_LogBuffer`. `Debug > Open Debug Log` spawns a second process (`debug_log_window.py`, same one-window-per-process constraint that made the Pi shell its own window) showing that buffer live, replaying history from startup so opening it late doesn't mean missing anything, with error/warning lines color-highlighted. This is what actually makes the app "standalone" — a packaged windowed build (PyInstaller `--noconsole` EXE, a macOS `.app`) has no console at all, so today every `print()` (including every `[serial error]`) goes nowhere anyone could ever see. Tested thoroughly: buffer/tee unit tests, a concurrency stress test (3 threads hammering `print()`-equivalents simultaneously, verifying no corrupted/interleaved lines reach the window), and a real live smoke test spawning the actual subprocess with real pygame. Also fixed a stale doc inconsistency I found along the way — the Terminal menu's actual on-screen label is "Debug" (you'd renamed it), but several docstring/README spots still said "Terminal menu."
+
+Now, on the **3-platform packaging** — I need to flag a real constraint before starting:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:41:05 AM</sup>
+
+<details>
+<summary>Tool: <code>AskUserQuestion</code></summary>
+
+```json
+{
+  "questions": [
+    {
+      "question": "I'm running on Windows only in this environment. PyInstaller (the standard tool for this) can't cross-compile -- it must run ON each target OS to produce a working binary for it. I can build and actually test the Windows .exe here, but not the macOS .app or Linux .run without access to those OSes. How do you want to handle Mac/Linux?",
+      "header": "Cross-platform build",
+      "options": [
+        {
+          "label": "Build scripts + GitHub Actions CI (Recommended)",
+          "description": "I write PyInstaller spec files and a GitHub Actions workflow that builds all three (Windows .exe, macOS .app, Linux packaged as a self-extracting .run via makeself) automatically on every push/tag, using GitHub's own Windows/macOS/Linux runners. You get all 3 real, tested artifacts without needing your own Mac/Linux machine -- just needs this repo pushed to GitHub with Actions enabled."
+        },
+        {
+          "label": "Build scripts only, you run them yourself",
+          "description": "I write the PyInstaller spec + build script for each platform (Windows .exe here, tested; macOS .app and Linux .run scripts written but untested by me). You run the Mac/Linux ones yourself on machines you have access to."
+        },
+        {
+          "label": "Windows only for now",
+          "description": "Build and test just the Windows .exe here today, revisit Mac/Linux packaging later."
+        }
+      ]
+    }
+  ]
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:41:40 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+Your questions have been answered: "I'm running on Windows only in this environment. PyInstaller (the standard tool for this) can't cross-compile -- it must run ON each target OS to produce a working binary for it. I can build and actually test the Windows .exe here, but not the macOS .app or Linux .run without access to those OSes. How do you want to handle Mac/Linux?"="Build scripts only, you run them yourself". You can now continue with these answers in mind.
+```
+
+</details>
 
 
 ---
