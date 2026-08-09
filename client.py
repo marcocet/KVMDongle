@@ -19,13 +19,15 @@ Requirements:
     pip install pygame opencv-python pyserial pyperclip pyte
 
 Usage:
+    python client.py
     python client.py --serial-port COM5 --capture-index 1
 
     --serial-port    the COM/tty port for the Pi's control link
-                      (Windows: e.g. COM5, Linux/Mac: e.g. /dev/ttyUSB0)
+                      (Windows: e.g. COM5, Linux/Mac: e.g. /dev/ttyUSB0) --
+                      omit to auto-select the first detected port
     --capture-index  the OpenCV device index for your capture card
                       (try 0, 1, 2... if unsure; the app also prints
-                      available indices on startup)
+                      available indices on startup) -- omit to auto-scan
     --baud           serial baud rate, must match pi/daemon.py (default 115200)
     --debug          print each key/mouse event to the terminal
 
@@ -38,15 +40,10 @@ Controls:
       right buttons all work; scrolling forwards the wheel at the
       target's current cursor position. Nothing captures your real
       cursor, so it's always free to also use the menu bar below.
-    - Use the menu bar at the top for common macro combos, clipboard
-      paste, and mounting ISOs from the Pi's SD card, or use their
-      hotkeys directly:
-        F11             Paste clipboard text onto the target
-        Ctrl+Shift+F1   Ctrl+Alt+Del
-        Ctrl+Shift+F2   Alt+Tab
-        Ctrl+Shift+F3   Alt+F4
-        Ctrl+Shift+F4   Win+R
-        Ctrl+Shift+F5   Win+D
+    - Use the menu bar at the top for macro combos, clipboard paste, and
+      mounting ISOs from the Pi's SD card -- all menu-driven, no local
+      hotkeys, so every keystroke while focused is always forwarded to
+      the target with nothing intercepted first.
     - Use the Video menu to switch capture devices without restarting --
       lists detected indices, marks the active one, and has a Refresh
       item to re-scan (e.g. after plugging in another capture card).
@@ -217,24 +214,17 @@ def letter_usage(ch):
     return 0x04 + (ord(ch) - ord("a"))
 
 
-# Macro combos -- ordered list of (label, usage_ids, hotkey_description).
-# Each press-sequence is sent in order, then released in reverse order.
-# Available both from the menu bar and via Ctrl+Shift+F1..F5, which
-# avoids colliding with plain F-keys you might need for a BIOS/POST screen.
+# Macro combos -- ordered list of (label, usage_ids). Each press-sequence
+# is sent in order, then released in reverse order. Menu-only (no local
+# hotkeys) -- every keystroke while the window is focused is forwarded to
+# the target, with nothing intercepted first.
 MACROS = [
-    ("Ctrl+Alt+Del", [protocol.USAGE_MOD_LEFT_CTRL, protocol.USAGE_MOD_LEFT_ALT, 0x4C], "Ctrl+Shift+F1"),
-    ("Alt+Tab", [protocol.USAGE_MOD_LEFT_ALT, 0x2B], "Ctrl+Shift+F2"),
-    ("Alt+F4", [protocol.USAGE_MOD_LEFT_ALT, 0x3D], "Ctrl+Shift+F3"),
-    ("Win+R", [protocol.USAGE_MOD_LEFT_GUI, letter_usage("r")], "Ctrl+Shift+F4"),
-    ("Win+D", [protocol.USAGE_MOD_LEFT_GUI, letter_usage("d")], "Ctrl+Shift+F5"),
+    ("Ctrl+Alt+Del", [protocol.USAGE_MOD_LEFT_CTRL, protocol.USAGE_MOD_LEFT_ALT, 0x4C]),
+    ("Alt+Tab", [protocol.USAGE_MOD_LEFT_ALT, 0x2B]),
+    ("Alt+F4", [protocol.USAGE_MOD_LEFT_ALT, 0x3D]),
+    ("Win+R", [protocol.USAGE_MOD_LEFT_GUI, letter_usage("r")]),
+    ("Win+D", [protocol.USAGE_MOD_LEFT_GUI, letter_usage("d")]),
 ]
-MACRO_HOTKEYS = {
-    pygame.K_F1: MACROS[0],
-    pygame.K_F2: MACROS[1],
-    pygame.K_F3: MACROS[2],
-    pygame.K_F4: MACROS[3],
-    pygame.K_F5: MACROS[4],
-}
 
 
 class SerialLink:
@@ -995,7 +985,9 @@ def main():
     _fix_windows_dpi_scaling()
 
     parser = argparse.ArgumentParser(description="Laptop crash cart: video + keyboard/mouse/storage bridge")
-    parser.add_argument("--serial-port", required=True, help="COM port / tty for the Pi's control link")
+    parser.add_argument("--serial-port", default=None,
+                         help="COM port / tty for the Pi's control link -- omit to auto-select "
+                              "the first detected serial port")
     parser.add_argument("--capture-index", type=int, default=None, help="OpenCV capture device index")
     parser.add_argument("--capture-width", type=int, default=1920,
                          help="request this capture width (default 1920 -- without an explicit "
@@ -1032,9 +1024,19 @@ def main():
     print(f"Negotiated capture mode: {describe_negotiated_mode(cap)} -- compare against OBS's "
           f"device properties for this same capture card if video quality looks off")
 
-    print(f"Opening serial link on {args.serial_port} @ {args.baud} baud...")
+    serial_port = args.serial_port
+    if serial_port is None:
+        print("Scanning for serial ports...")
+        ports = list_serial_ports()
+        if not ports:
+            print("No serial ports found. Specify one with --serial-port.")
+            sys.exit(1)
+        print(f"Found ports: {ports}. Using {ports[0]}.")
+        serial_port = ports[0]
+
+    print(f"Opening serial link on {serial_port} @ {args.baud} baud...")
     try:
-        link = SerialLink(args.serial_port, args.baud)
+        link = SerialLink(serial_port, args.baud)
     except serial.SerialException as e:
         print(f"Could not open serial port: {e}")
         sys.exit(1)
@@ -1068,7 +1070,7 @@ def main():
     held_target_buttons = 0
 
     video_state = VideoState(capture_index)
-    port_state = PortState(args.serial_port)
+    port_state = PortState(serial_port)
     storage = StorageState()
     network = NetworkState()
     terminal = TerminalWindow(link)
@@ -1120,8 +1122,6 @@ def main():
     def terminal_menu_items():
         label = "Close Pi Shell" if terminal.is_open else "Open Pi Shell"
         items = [(label, "", do_toggle_terminal)]
-        if pyte is None:
-            items.append(("(requires: pip install pyte)", "", lambda: None))
         items.append(("Restart Daemon", "", do_restart_daemon))
         reboot_label = "Reboot Pi (click again to confirm)" if reboot_arm.is_armed() else "Reboot Pi"
         items.append((reboot_label, "", do_reboot))
@@ -1279,9 +1279,9 @@ def main():
         return items
 
     menus = [
-        ("Macros", [(label, hotkey, lambda usage_ids=usage_ids, label=label: do_macro(usage_ids, label))
-                    for (label, usage_ids, hotkey) in MACROS], None),
-        ("Clipboard", [("Paste Clipboard", "F11", do_paste)], None),
+        ("Macros", [(label, "", lambda usage_ids=usage_ids, label=label: do_macro(usage_ids, label))
+                    for (label, usage_ids) in MACROS], None),
+        ("Clipboard", [("Paste Clipboard", "", do_paste)], None),
         ("Video", video_menu_items, do_refresh_video_devices),
         ("Serial Port", port_menu_items, do_refresh_serial_ports),
         ("Storage", storage_menu_items, do_refresh_isos),
@@ -1394,15 +1394,6 @@ def main():
                 menu.resize(new_w)
 
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_F11:
-                    do_paste()
-                    continue
-
-                if (event.mod & pygame.KMOD_CTRL) and (event.mod & pygame.KMOD_SHIFT) and event.key in MACRO_HOTKEYS:
-                    label, usage_ids, _hotkey = MACRO_HOTKEYS[event.key]
-                    send_macro(link, usage_ids, args.debug, label)
-                    continue
-
                 # Keyboard is always forwarded while this window has focus --
                 # the OS only delivers KEYDOWN/KEYUP events here when it does.
                 usage_id = usage_for_event(event)

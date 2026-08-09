@@ -92,11 +92,19 @@ for reference -- its UI is what `client.py` is modeled on.
 
 ```
 pip install -r requirements.txt
+python client.py
+```
+Both `--serial-port` and `--capture-index` are optional -- omit either (or
+both, as above) to auto-select the first one found, e.g. for running this
+as a standalone, no-arguments application. Pass them explicitly only if
+you need to pick a specific one out of several:
+```
 python client.py --serial-port COM5 --capture-index 1
 ```
 
 - `--serial-port`: the USB-TTL adapter's port (Windows: `COM5`-style;
-  Linux/Mac: `/dev/ttyUSB0`-style)
+  Linux/Mac: `/dev/ttyUSB0`-style) -- omit to auto-select the first
+  detected serial port
 - `--capture-index`: your HDMI-capture device's OpenCV index (omit to
   auto-scan)
 - `--capture-width` / `--capture-height` (default `1920`x`1080`) /
@@ -105,7 +113,8 @@ python client.py --serial-port COM5 --capture-index 1
   nominal frame size, which looks grainy/blurry -- requesting an explicit
   mode fixes it. Pass `0` for width/height to not request a specific one.
   See Troubleshooting if 1920x1080 isn't your capture card's native mode.
-- `--baud`: must match `pi/daemon.py` (default `460800` on both ends)
+- `--baud`: must match `pi/daemon.py` (default `115200` on both ends -- a
+  higher rate (460800) was tried and reverted; see Troubleshooting)
 - `--debug`: prints every key/mouse event and Pi reply to the terminal
 
 On Windows, `client.py` opens the capture device via DirectShow rather than
@@ -131,8 +140,11 @@ grainy/blurry here" (see Troubleshooting).
   Your real cursor is never hidden or grabbed -- it's always free to also
   use the menu bar, since clicks are routed by whether they land above or
   below the menu bar strip, not by any mode switch.
-- **F11** pastes clipboard text onto the target, character by character.
-- **Ctrl+Shift+F1..F5**: Ctrl+Alt+Del, Alt+Tab, Alt+F4, Win+R, Win+D.
+- **Clipboard > Paste Clipboard** types clipboard text onto the target,
+  character by character. **Macros** has Ctrl+Alt+Del, Alt+Tab, Alt+F4,
+  Win+R, and Win+D. Both are menu-only -- no local hotkeys -- so every
+  keystroke while the window is focused is always forwarded straight to
+  the target, with nothing intercepted first.
 - **Video** menu: switch capture devices without restarting `client.py` --
   lists detected indices (the active one marked with `*`) and has a
   Refresh item to re-scan, e.g. after plugging in another capture card.
@@ -165,8 +177,9 @@ grainy/blurry here" (see Troubleshooting).
   window to end the session; if the Pi's shell exits on its own (e.g. you
   typed `exit`), the window shows that and waits for you to close it,
   same as a real terminal emulator noticing its process ended. Requires
-  the `pyte` package (see `requirements.txt`) -- the menu item says so if
-  it's missing.
+  the `pyte` package (see `requirements.txt`) -- if it's missing, clicking
+  "Open Pi Shell" just prints a note to the terminal instead of opening
+  anything.
 - The **Terminal** menu also has three power commands for the Pi itself,
   each of which shells out to `systemctl` on the Pi:
   - **Restart Daemon** -- one click, restarts just `kvmdongle-daemon`
@@ -399,9 +412,10 @@ sudo /opt/kvmdongle/wifi-ap-toggle.sh off   # back to normal Wi-Fi
   frame types to `protocol.py` (`SHELL_OPEN`/`SHELL_INPUT`/`SHELL_OUTPUT`/
   etc.) that a Pi still running an older `pi/daemon.py` doesn't know about
   -- same as any other protocol change, this needs `sudo ./install.sh` +
-  a daemon restart on the Pi to pick up. Separately, an extra
-  "(requires: pip install pyte)" line shows up under the menu item if the
-  `pyte` package isn't installed in the laptop's Python environment --
+  a daemon restart on the Pi to pick up. Separately, if the `pyte`
+  package isn't installed in the laptop's Python environment, clicking
+  "Open Pi Shell" just prints a note to the terminal (`pyte is not
+  installed -- run: pip install pyte`) instead of opening anything --
   `pip install pyte` (or `pip install -r requirements.txt`) fixes that;
   `client.py` spawns a second process (`terminal_window.py`) for the shell
   window itself (pygame can only own one window per process), so that
@@ -478,15 +492,29 @@ sudo /opt/kvmdongle/wifi-ap-toggle.sh off   # back to normal Wi-Fi
   no matter what.
 - **`client.py` and `pi/daemon.py` can't communicate at all -- the
   connection light never turns green, no menu ever gets a reply**: check
-  that `--baud` actually matches on both ends before anything else. This
-  project moved off the default 115200 to 460800 early on (see "Setting
-  up the Pi" and `pi/daemon.py`'s `BAUD_RATE`) after freeing up the Pi's
-  good UART from Bluetooth -- if `client.py`'s `--baud` default or your
-  own `--baud` argument doesn't match `pi/daemon.py`'s `BAUD_RATE`, every
-  byte on the wire is misread relative to its actual bit timing, so the
-  checksummed frame parser on both ends never resolves anything into a
-  valid frame -- total, silent communication failure, not a partial or
-  intermittent one.
+  that `--baud` actually matches `pi/daemon.py`'s `BAUD_RATE` before
+  anything else -- if they don't, every byte on the wire is misread
+  relative to its actual bit timing, so the checksummed frame parser on
+  both ends never resolves anything into a valid frame: total, silent
+  communication failure, not a partial or intermittent one. This project
+  actually tried raising the default from 115200 to 460800 at one point
+  (after `disable-bt` frees up the Pi's good PL011 UART, which can
+  comfortably run faster than the mini-UART could) and then reverted it
+  back to 115200 -- confirmed directly with `screen` on a USB-TTL
+  adapter/Mac combination that received nothing at all at 460800 but
+  worked fine at 115200 (and 9600). The PL011 UART itself isn't the
+  limit; the USB-serial adapter chip and its driver on the *laptop* end
+  need to reliably support whatever rate is chosen too, and not every
+  cheap adapter's driver does so cleanly at nonstandard high rates on
+  every OS. 115200 is the safer universal default -- keyboard/mouse/
+  control traffic is tiny regardless of baud, and even the Pi-shell
+  terminal's live output is still comfortably interactive at 115200, just
+  not as fast as 460800 would be for something like a giant `cat`. If you
+  know your specific adapter/OS combination handles a higher rate
+  reliably (confirm with `screen`/`minicom` directly, the same way this
+  was diagnosed), raising `BAUD_RATE` in `pi/daemon.py` and `--baud`'s
+  default in `client.py` together is fine -- just verify with a raw
+  terminal first, not just by trying the app and guessing.
 - **The Pi shell window shows "[session closed]" (the Pi's bash exited on
   its own) but then vanishes on its own ~1 second later instead of
   waiting for you to close it**: this was a real bug in `client.py`.

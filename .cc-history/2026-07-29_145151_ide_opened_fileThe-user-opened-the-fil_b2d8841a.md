@@ -6,8 +6,8 @@
 | **Session ID** | `b2d8841a-7434-4615-9fcb-f34f5020c07a` |
 | **Working Dir** | `c:\Users\Marco\Documents\GitHub\KVMDongle` |
 | **Started** | 7/29/2026, 2:51:51 PM |
-| **Last Updated** | 8/9/2026, 1:54:07 AM |
-| **Messages** | 2345 |
+| **Last Updated** | 8/9/2026, 3:02:48 AM |
+| **Messages** | 2505 |
 
 ---
 
@@ -39845,6 +39845,2419 @@ Given it opens without error but nothing gets through, the two most likely cause
 2. **A baud rate mismatch, again** — this is worth taking seriously because it's *exactly* the shape of bug we already found and fixed on Windows (client defaulted to 115200 while the Pi's daemon runs at 460800): the port opens fine, nothing errors, but every byte is misread relative to its real bit timing, so the checksummed frame parser never resolves a valid frame on either end — total, silent failure, connection light never turns green. Some USB-serial chips' macOS drivers only cleanly support a fixed list of standard bauds and can silently coerce a nonstandard one like 460800 to something else instead of erroring, which would reproduce this exact symptom purely from being on a different OS/driver, with `client.py` and `pi/daemon.py` both otherwise unchanged.
 
 Can you run it with `--debug` and check two things: does the connection-status light in the menu bar ever turn green, and does anything print with `[serial error]` in it? Also, what's the actual `--serial-port` value you're passing (the full `/dev/...` path)?
+
+
+---
+
+## User <sup>8/9/2026, 2:33:59 AM</sup>
+
+<ide_opened_file>The user opened the file c:\Users\Marco\Documents\GitHub\KVMDongle\pi\daemon.py in the IDE. This may or may not be related to the current task.</ide_opened_file>
+
+both cu and tty have the same output when i connect with screen
+
+baud rate isnt the issue, although macos does not seem to see output from the device at 460800 at all in screen.
+
+screen did see an output at 115200 and 9600
+
+i have changed the baud of the project to 115200 for future reference
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:34:26 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:34:29 AM</sup>
+
+That `screen` test is conclusive — real hardware/driver evidence, not a guess. If raw `screen` can't see anything at 460800 but works fine at 115200 and 9600, the actual USB-serial adapter/cable/driver combo genuinely can't sustain that rate reliably here, independent of anything in this project's code. Dropping the whole project back to 115200 on both ends is the right call — it's a standard rate every adapter/driver handles correctly, and the bandwidth doesn't matter for keyboard/mouse/control traffic (only the Pi-shell terminal's live output streams meaningfully slower, and 115200 is still plenty for interactive use).
+
+Let me check the README for any stale references to 460800 or the reasoning behind it, since that was written when 460800 was the chosen default.
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:34:30 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "460800|disable-bt|baud",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "output_mode": "content",
+  "-n": true,
+  "-i": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:34:30 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+68:- Adds `dtoverlay=dwc2,dr_mode=peripheral` and `dtoverlay=disable-bt` and
+69:  `enable_uart=1` to `config.txt`. `disable-bt` moves the Pi's better UART
+108:- `--baud`: must match `pi/daemon.py` (default `460800` on both ends)
+481:  that `--baud` actually matches on both ends before anything else. This
+482:  project moved off the default 115200 to 460800 early on (see "Setting
+483:  up the Pi" and `pi/daemon.py`'s `BAUD_RATE`) after freeing up the Pi's
+484:  good UART from Bluetooth -- if `client.py`'s `--baud` default or your
+485:  own `--baud` argument doesn't match `pi/daemon.py`'s `BAUD_RATE`, every
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:34:35 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "offset": 64,
+  "limit": 10
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:34:35 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+64	`install.sh` is idempotent -- safe to re-run if something goes wrong.
+65	
+66	### What `install.sh` does
+67	
+68	- Adds `dtoverlay=dwc2,dr_mode=peripheral` and `dtoverlay=disable-bt` and
+69	  `enable_uart=1` to `config.txt`. `disable-bt` moves the Pi's better UART
+70	  (PL011) off Bluetooth duty and onto the GPIO pins -- the alternative
+71	  mini-UART's clock scales with CPU frequency and isn't reliable for this
+72	  link.
+73	- Strips any serial console from `cmdline.txt` and masks the getty units,
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:34:44 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:34:45 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "offset": 100,
+  "limit": 15
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:34:45 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+100	- `--capture-index`: your HDMI-capture device's OpenCV index (omit to
+101	  auto-scan)
+102	- `--capture-width` / `--capture-height` (default `1920`x`1080`) /
+103	  `--capture-fourcc`: without an explicit width/height, some capture cards
+104	  silently negotiate a lower-detail mode despite still reporting the same
+105	  nominal frame size, which looks grainy/blurry -- requesting an explicit
+106	  mode fixes it. Pass `0` for width/height to not request a specific one.
+107	  See Troubleshooting if 1920x1080 isn't your capture card's native mode.
+108	- `--baud`: must match `pi/daemon.py` (default `460800` on both ends)
+109	- `--debug`: prints every key/mouse event and Pi reply to the terminal
+110	
+111	On Windows, `client.py` opens the capture device via DirectShow rather than
+112	OpenCV's default Media Foundation backend, and marks the process
+113	DPI-aware -- both fix issues that otherwise show up as "looks fine in OBS,
+114	grainy/blurry here" (see Troubleshooting).
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:34:52 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "old_string": "- `--baud`: must match `pi/daemon.py` (default `460800` on both ends)",
+  "new_string": "- `--baud`: must match `pi/daemon.py` (default `115200` on both ends -- a\n  higher rate (460800) was tried and reverted; see Troubleshooting)"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:35:12 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\README.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:35:15 AM</sup>
+
+Now let's rewrite the troubleshooting entry with the full, correct story:
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:35:16 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "offset": 476,
+  "limit": 14
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:35:16 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+476	  check gated on time since *we last sent a ping* specifically, which
+477	  fires regardless of how much other traffic is flowing, guaranteeing a
+478	  reply-soliciting ping at least every `KEEPALIVE_INTERVAL_SECONDS`
+479	  no matter what.
+480	- **`client.py` and `pi/daemon.py` can't communicate at all -- the
+481	  connection light never turns green, no menu ever gets a reply**: check
+482	  that `--baud` actually matches on both ends before anything else. This
+483	  project moved off the default 115200 to 460800 early on (see "Setting
+484	  up the Pi" and `pi/daemon.py`'s `BAUD_RATE`) after freeing up the Pi's
+485	  good UART from Bluetooth -- if `client.py`'s `--baud` default or your
+486	  own `--baud` argument doesn't match `pi/daemon.py`'s `BAUD_RATE`, every
+487	  byte on the wire is misread relative to its actual bit timing, so the
+488	  checksummed frame parser on both ends never resolves anything into a
+489	  valid frame -- total, silent communication failure, not a partial o
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:35:22 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "offset": 489,
+  "limit": 6
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:35:22 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+489	  valid frame -- total, silent communication failure, not a partial or
+490	  intermittent one.
+491	- **The Pi shell window shows "[session closed]" (the Pi's bash exited on
+492	  its own) but then vanishes on its own ~1 second later instead of
+493	  waiting for you to close it**: this was a real bug in `client.py`.
+494	  `TerminalWindow.notify_closed()` used to call the exact same
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:35:34 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "old_string": "- **`client.py` and `pi/daemon.py` can't communicate at all -- the\n  connection light never turns green, no menu ever gets a reply**: check\n  that `--baud` actually matches on both ends before anything else. This\n  project moved off the default 115200 to 460800 early on (see \"Setting\n  up the Pi\" and `pi/daemon.py`'s `BAUD_RATE`) after freeing up the Pi's\n  good UART from Bluetooth -- if `client.py`'s `--baud` default or your\n  own `--baud` argument doesn't match `pi/daemon.py`'s `BAUD_RATE`, every\n  byte on the wire is misread relative to its actual bit timing, so the\n  checksummed frame parser on both ends never resolves anything into a\n  valid frame -- total, silent communication failure, not a partial or\n  intermittent one.",
+  "new_string": "- **`client.py` and `pi/daemon.py` can't communicate at all -- the\n  connection light never turns green, no menu ever gets a reply**: check\n  that `--baud` actually matches `pi/daemon.py`'s `BAUD_RATE` before\n  anything else -- if they don't, every byte on the wire is misread\n  relative to its actual bit timing, so the checksummed frame parser on\n  both ends never resolves anything into a valid frame: total, silent\n  communication failure, not a partial or intermittent one. This project\n  actually tried raising the default from 115200 to 460800 at one point\n  (after `disable-bt` frees up the Pi's good PL011 UART, which can\n  comfortably run faster than the mini-UART could) and then reverted it\n  back to 115200 -- confirmed directly with `screen` on a USB-TTL\n  adapter/Mac combination that received nothing at all at 460800 but\n  worked fine at 115200 (and 9600). The PL011 UART itself isn't the\n  limit; the USB-serial adapter chip and its driver on the *laptop* end\n  need to reliably support whatever rate is chosen too, and not every\n  cheap adapter's driver does so cleanly at nonst
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:38:59 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\README.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:39:03 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:39:03 AM</sup>
+
+Let's verify `client.py`'s actual argparse default matches the user's intentional edit (115200), and run a final compile + regression check to make sure everything's consistent.
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:39:04 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "--baud|BAUD_RATE",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:39:04 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+.cc-history\2026-07-29_145151_ide_opened_fileThe-user-opened-the-fil_b2d8841a.md:925:[Omitted long matching line]
+.cc-history\2026-07-29_145151_ide_opened_fileThe-user-opened-the-fil_b2d8841a.md:1181:[Omitted long matching line]
+.cc-history\2026-07-29_145151_ide_opened_fileThe-user-opened-the-fil_b2d8841a.md:3968:196	        self.ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0.1, exclusive=True)
+.cc-history\2026-07-29_145151_ide_opened_fileThe-user-opened-the-fil_b2d8841a.md:6332:102	- `--baud`: must match `pi/daemon.py` (default `460800` on both ends)
+.cc-history\2026-07-29_145151_ide_opened_fileThe-user-opened-the-fil_b2d8841a.md:7513:265	        self.ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0.1, exclusive=True)
+.cc-history\2026-07-29_145151_ide_opened_fileThe-user-opened-the-fil_b2d8841a.md:8079:[Omitted long matching line]
+.cc-history\2026-07-29_145151_ide_opened_fileThe-user-opened-the-fil_b2d8841a.md:8579:102	- `--baud`: must match `pi/daemon.py` (default `460800
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:39:09 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:39:10 AM</sup>
+
+Good — everything is consistent now: `daemon.py` (115200), `client.py` (115200), and `README.md` updated to match, with the real root cause documented. Let's do a final sanity check.
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:39:11 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; .\\.venv\\Scripts\\python.exe -m py_compile client.py pi\\daemon.py protocol.py terminal_window.py; if ($?) { \"compile OK\" }"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:39:18 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+compile OK
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:39:24 AM</sup>
+
+Good diagnosis on your end — `screen` confirming the raw hardware/driver can't sustain 460800 while 115200 and 9600 work fine is solid, direct evidence, much better than anything I could've guessed from the app's behavior alone. Your fix (both ends back to 115200) is the right call.
+
+I updated the README to match: the `--baud` reference and the troubleshooting entry now correctly describe 115200 as the default, with the full story (why 460800 was tried, what `disable-bt` actually buys you regardless of baud, and the real evidence that reverted it) so nobody re-treads this later. Everything compiles clean.
+
+
+---
+
+## User <sup>8/9/2026, 2:40:29 AM</sup>
+
+maybe this wasnt clear in my message but mac os is still not able to communicate with the pi even though i can see messages over the screen session
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:41:19 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:41:24 AM</sup>
+
+Good to know — that actually narrows things down a lot, since it rules out the physical link/baud rate itself (screen proves the wire and rate are fine). That means something is different between how `screen` uses the port and how `client.py`/pyserial uses it. Before speculating further, I need a couple of concrete things:
+
+1. **Is `screen` fully quit**, not just detached (`Ctrl-A D` leaves it running in the background still holding the port open)? A lingering `screen` session holding the device would make `client.py`'s own `serial.Serial()` open either fail outright or fight over the same port. Check with `screen -ls` and `screen -X -S <session> quit` if anything's still listed, or just `killall screen`, before trying `client.py`.
+
+2. Run `client.py --debug` (with `screen` confirmed closed) and tell me exactly what happens:
+   - Does it print anything containing `[serial error]`?
+   - Does the connection-status light in the menu bar ever turn green?
+   - Do you see any `[from pi]` lines at all (even once), or absolutely nothing ever comes through?
+
+That last one matters a lot: "nothing ever printed, ever" points at the port genuinely not being read from/written to correctly by pyserial on this system, while "frames arrive but look wrong/get rejected" would point somewhere else entirely (like the checksum/framing itself getting corrupted by termios line-discipline processing on macOS, which is a real possibility for a raw binary protocol if the port isn't opened in truly raw mode).
+
+
+---
+
+## User <sup>8/9/2026, 2:46:07 AM</sup>
+
+im not entirely sure what the issue was, I didnt have any screen sessions running but rebooting the laptop seemes to have fixed the issue
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:46:26 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:46:28 AM</sup>
+
+Good, glad that resolved it. Since nothing in the code changed and everything we checked came back clean, this smells like a transient OS/USB-driver state issue rather than a real bug — Mac serial drivers occasionally get into a wedged state (especially after a bunch of rapid open/close/reconnect cycles like we were doing while testing different baud rates) that a full reboot clears by forcing a clean USB re-enumeration. If it happens again, unplugging and replugging the adapter is worth trying first — it's a lighter-weight way of forcing the same kind of reset without a full reboot.
+
+No code changes needed here. Let me know if it resurfaces or if you hit anything else once you're back to actually using it.
+
+
+---
+
+## User <sup>8/9/2026, 2:53:19 AM</sup>
+
+will do thank you 
+
+
+a few small changes
+
+1:please remove the default iso mount, i would rather just chose manually if i want to mount an iso
+2:please remove the key combos for macros and clipboard paste
+3:please remove the require pyte message in debug menu
+4: if the program is run without any arguments can you make it default to the first available serial device?
+
+the end goal is to make this a standalone application
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:53:57 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:53:57 AM</sup>
+
+Let me look at the current state of things before making these changes.
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:53:57 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "DEFAULT_ISO|netboot",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle",
+  "output_mode": "content"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:53:58 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+.cc-history\2026-07-29_145151_ide_opened_fileThe-user-opened-the-fil_b2d8841a.md:34212:2. you can default to use "netboot.xyz.iso" that is what i would be booting from a majority of the time anyway
+.cc-history\2026-07-29_145151_ide_opened_fileThe-user-opened-the-fil_b2d8841a.md:34228:Since the mouse never actually bound (confirmed: no `hid-generic ... Mouse` success line ever appeared for interface 1.1), that's a separate, real bug we'll need to dig into next — Linux-only mouse failure, independent of the storage/reset issue. But let's do netboot.xyz.iso first since that's the immediate ask.
+.cc-history\2026-07-29_145151_ide_opened_fileThe-user-opened-the-fil_b2d8841a.md:34230:I'll have `gadget-setup.sh` pre-populate the LUN with `netboot.xyz.iso` (if present) *before* binding to the UDC, so the host never sees an empty LUN during its initial SCSI probe — that's the theory we're testing.
+.cc-history\2026-07-29_145151_ide_opened_fileThe-user-opened-the-fil_b2d8841a.md:34297:[Omitted lon
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:54:25 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:54:26 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "\\.mount\\(|do_mount|MOUNT_ISO",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\pi\\daemon.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:54:26 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+11:  - handles LIST_ISOS / MOUNT_ISO / EJECT_ISO by scanning the ISOs
+586:            elif frame_type == p.MOUNT_ISO:
+589:                    self.storage.mount(name)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:54:32 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:54:34 AM</sup>
+
+Good — I checked thoroughly, and there's no default/automatic ISO-mount logic anywhere in `daemon.py` (`StorageController.mount()` is only ever called from the explicit `MOUNT_ISO` handler, which only fires on a user-initiated client request). That must be from your other forked session — nothing to remove here. Now let's do the other three.
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:54:34 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 216,
+  "limit": 18
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:54:34 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+216	def letter_usage(ch):
+217	    return 0x04 + (ord(ch) - ord("a"))
+218	
+219	
+220	# Macro combos -- ordered list of (label, usage_ids, hotkey_description).
+221	# Each press-sequence is sent in order, then released in reverse order.
+222	# Available both from the menu bar and via Ctrl+Shift+F1..F5, which
+223	# avoids colliding with plain F-keys you might need for a BIOS/POST screen.
+224	MACROS = [
+225	    ("Ctrl+Alt+Del", [protocol.USAGE_MOD_LEFT_CTRL, protocol.USAGE_MOD_LEFT_ALT, 0x4C], "Ctrl+Shift+F1"),
+226	    ("Alt+Tab", [protocol.USAGE_MOD_LEFT_ALT, 0x2B], "Ctrl+Shift+F2"),
+227	    ("Alt+F4", [protocol.USAGE_MOD_LEFT_ALT, 0x3D], "Ctrl+Shift+F3"),
+228	    ("Win+R", [protocol.USAGE_MOD_LEFT_GUI, letter_usage("r")], "Ctrl+Shift+F4"),
+229	    ("Win+D", [protocol.USAGE_MOD_LEFT_GUI, letter_usage("d")], "Ctrl+Shift+F5"),
+230	]
+231	MACRO_HOTKEYS = {
+232	    pygame.K_F1: MACROS[0],
+233	    pygame.K_F2: MACROS[1],
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:54:40 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 230,
+  "limit": 10
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:54:40 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+230	]
+231	MACRO_HOTKEYS = {
+232	    pygame.K_F1: MACROS[0],
+233	    pygame.K_F2: MACROS[1],
+234	    pygame.K_F3: MACROS[2],
+235	    pygame.K_F4: MACROS[3],
+236	    pygame.K_F5: MACROS[4],
+237	}
+238	
+239
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:54:44 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:54:45 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "MACRO_HOTKEYS|MACROS\\[|for \\(label, usage_ids, hotkey\\)|K_F11|do_paste|Paste Clipboard",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:54:45 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+231:MACRO_HOTKEYS = {
+232:    pygame.K_F1: MACROS[0],
+233:    pygame.K_F2: MACROS[1],
+234:    pygame.K_F3: MACROS[2],
+235:    pygame.K_F4: MACROS[3],
+236:    pygame.K_F5: MACROS[4],
+1083:    def do_paste():
+1283:                    for (label, usage_ids, hotkey) in MACROS], None),
+1284:        ("Clipboard", [("Paste Clipboard", "F11", do_paste)], None),
+1397:                if event.key == pygame.K_F11:
+1398:                    do_paste()
+1401:                if (event.mod & pygame.KMOD_CTRL) and (event.mod & pygame.KMOD_SHIFT) and event.key in MACRO_HOTKEYS:
+1402:                    label, usage_ids, _hotkey = MACRO_HOTKEYS[event.key]
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:54:49 AM</sup>
+
+Let's look at the full context around the menu construction and KEYDOWN handler before editing.
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:54:49 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1278,
+  "limit": 10
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:54:49 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1278	            items.append(("Disable Wi-Fi AP", "", do_disable_ap))
+1279	        return items
+1280	
+1281	    menus = [
+1282	        ("Macros", [(label, hotkey, lambda usage_ids=usage_ids, label=label: do_macro(usage_ids, label))
+1283	                    for (label, usage_ids, hotkey) in MACROS], None),
+1284	        ("Clipboard", [("Paste Clipboard", "F11", do_paste)], None),
+1285	        ("Video", video_menu_items, do_refresh_video_devices),
+1286	        ("Serial Port", port_menu_items, do_refresh_serial_ports),
+1287	        ("Storage", storage_menu_items, do_refresh_isos),
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:54:54 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1390,
+  "limit": 20
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:54:54 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1390	            elif event.type == pygame.VIDEORESIZE:
+1391	                new_w = max(MIN_WINDOW_WIDTH, event.w)
+1392	                new_h = max(MIN_WINDOW_HEIGHT, event.h)
+1393	                screen = pygame.display.set_mode((new_w, new_h), pygame.RESIZABLE)
+1394	                menu.resize(new_w)
+1395	
+1396	            elif event.type == pygame.KEYDOWN:
+1397	                if event.key == pygame.K_F11:
+1398	                    do_paste()
+1399	                    continue
+1400	
+1401	                if (event.mod & pygame.KMOD_CTRL) and (event.mod & pygame.KMOD_SHIFT) and event.key in MACRO_HOTKEYS:
+1402	                    label, usage_ids, _hotkey = MACRO_HOTKEYS[event.key]
+1403	                    send_macro(link, usage_ids, args.debug, label)
+1404	                    continue
+1405	
+1406	                # Keyboard is always forwarded while this window has focus --
+1407	                # the OS only delivers KEYDOWN/KEYUP events here when it does.
+1408	                usage_id 
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:55:01 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:55:02 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1,
+  "limit": 77
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:55:02 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1	"""
+2	client.py
+3	
+4	Displays the video feed from a USB capture device in a window, forwards
+5	keyboard AND mouse input to a Raspberry Pi Zero W running pi/daemon.py
+6	(which injects them as real USB keyboard/mouse input into the target
+7	machine via its USB OTG port, and also exposes an ISO from its SD card
+8	as read-only USB mass storage on request).
+9	
+10	Keyboard input is always forwarded while the window has focus -- no
+11	toggle needed, since the OS only delivers keyboard events to a focused
+12	window anyway. Mouse input works like a touchscreen, not a captured
+13	relative pointer: your real cursor is always visible and free, and
+14	clicking/dragging in the video area moves the TARGET's cursor to the
+15	corresponding position and clicks/drags there. Nothing is ever hidden
+16	or grabbed, so there's no mode to toggle.
+17	
+18	Requirements:
+19	    pip install pygame opencv-python pyserial pyperclip pyte
+20	
+21	Usage:
+22	    python client.py --serial-port COM5 --capture-index 1
+23	
+
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:55:08 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:55:16 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "Usage:\n    python client.py --serial-port COM5 --capture-index 1\n\n    --serial-port    the COM/tty port for the Pi's control link\n                      (Windows: e.g. COM5, Linux/Mac: e.g. /dev/ttyUSB0)\n    --capture-index  the OpenCV device index for your capture card\n                      (try 0, 1, 2... if unsure; the app also prints\n                      available indices on startup)\n    --baud           serial baud rate, must match pi/daemon.py (default 115200)\n    --debug          print each key/mouse event to the terminal\n\nControls:\n    - Click into the video window to give it focus, then type normally.\n      Keystrokes go to the target machine whenever this window is\n      focused -- no toggle needed.\n    - Click or drag anywhere in the video area to move the target's\n      cursor there and click/drag -- like a touchscreen. Left/middle/\n      right buttons all work; scrolling forwards the wheel at the\n      target's current cursor position. Nothing captures your real\n      cursor, so it's always free to also use the menu bar below.\n    - Use the menu bar at the top for common macro combos, clipboard\n      paste, and mounting ISOs from the Pi's SD card, or use their\n      hotkeys directly:\n        F11             Paste clipboard text onto the target\n        Ctrl+Shift+F1   Ctrl+Alt+Del\n        Ctrl+Shift+F2   Alt+Tab\n        Ctrl+Shift+F3   Alt+F4\n        Ctrl+Shift+F4   Win+R\n        Ctrl+Shift+F5   Win+D\n    - Use the Video menu to switch capture devices without restarting --",
+  "new_string": "Usage:\n    python client.py\n    python client.py --serial-port COM5 --capture-index 1\n\n    --serial-port    the COM/tty port for the Pi's control link\n                      (Windows: e.g. COM5, Linux/Mac: e.g. /dev/ttyUSB0) --\n                      omit to auto-select the first detected port\n    --capture-index  th
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:55:17 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:55:22 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:55:29 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "# Macro combos -- ordered list of (label, usage_ids, hotkey_description).\n# Each press-sequence is sent in order, then released in reverse order.\n# Available both from the menu bar and via Ctrl+Shift+F1..F5, which\n# avoids colliding with plain F-keys you might need for a BIOS/POST screen.\nMACROS = [\n    (\"Ctrl+Alt+Del\", [protocol.USAGE_MOD_LEFT_CTRL, protocol.USAGE_MOD_LEFT_ALT, 0x4C], \"Ctrl+Shift+F1\"),\n    (\"Alt+Tab\", [protocol.USAGE_MOD_LEFT_ALT, 0x2B], \"Ctrl+Shift+F2\"),\n    (\"Alt+F4\", [protocol.USAGE_MOD_LEFT_ALT, 0x3D], \"Ctrl+Shift+F3\"),\n    (\"Win+R\", [protocol.USAGE_MOD_LEFT_GUI, letter_usage(\"r\")], \"Ctrl+Shift+F4\"),\n    (\"Win+D\", [protocol.USAGE_MOD_LEFT_GUI, letter_usage(\"d\")], \"Ctrl+Shift+F5\"),\n]\nMACRO_HOTKEYS = {\n    pygame.K_F1: MACROS[0],\n    pygame.K_F2: MACROS[1],\n    pygame.K_F3: MACROS[2],\n    pygame.K_F4: MACROS[3],\n    pygame.K_F5: MACROS[4],\n}",
+  "new_string": "# Macro combos -- ordered list of (label, usage_ids). Each press-sequence\n# is sent in order, then released in reverse order. Menu-only (no local\n# hotkeys) -- every keystroke while the window is focused is forwarded to\n# the target, with nothing intercepted first.\nMACROS = [\n    (\"Ctrl+Alt+Del\", [protocol.USAGE_MOD_LEFT_CTRL, protocol.USAGE_MOD_LEFT_ALT, 0x4C]),\n    (\"Alt+Tab\", [protocol.USAGE_MOD_LEFT_ALT, 0x2B]),\n    (\"Alt+F4\", [protocol.USAGE_MOD_LEFT_ALT, 0x3D]),\n    (\"Win+R\", [protocol.USAGE_MOD_LEFT_GUI, letter_usage(\"r\")]),\n    (\"Win+D\", [protocol.USAGE_MOD_LEFT_GUI, letter_usage(\"d\")]),\n]"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:55:30 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:55:34 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:55:36 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    menus = [\n        (\"Macros\", [(label, hotkey, lambda usage_ids=usage_ids, label=label: do_macro(usage_ids, label))\n                    for (label, usage_ids, hotkey) in MACROS], None),\n        (\"Clipboard\", [(\"Paste Clipboard\", \"F11\", do_paste)], None),",
+  "new_string": "    menus = [\n        (\"Macros\", [(label, \"\", lambda usage_ids=usage_ids, label=label: do_macro(usage_ids, label))\n                    for (label, usage_ids) in MACROS], None),\n        (\"Clipboard\", [(\"Paste Clipboard\", \"\", do_paste)], None),"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:55:37 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:55:45 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "            elif event.type == pygame.KEYDOWN:\n                if event.key == pygame.K_F11:\n                    do_paste()\n                    continue\n\n                if (event.mod & pygame.KMOD_CTRL) and (event.mod & pygame.KMOD_SHIFT) and event.key in MACRO_HOTKEYS:\n                    label, usage_ids, _hotkey = MACRO_HOTKEYS[event.key]\n                    send_macro(link, usage_ids, args.debug, label)\n                    continue\n\n                # Keyboard is always forwarded while this window has focus --",
+  "new_string": "            elif event.type == pygame.KEYDOWN:\n                # Keyboard is always forwarded while this window has focus --"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:55:46 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:55:51 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:55:51 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "send_macro|do_macro",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:55:51 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+531:def send_macro(link, usage_ids, debug, label):
+1070:    def do_macro(usage_ids, label):
+1071:        send_macro(link, usage_ids, args.debug, label)
+1272:        ("Macros", [(label, "", lambda usage_ids=usage_ids, label=label: do_macro(usage_ids, label))
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:55:56 AM</sup>
+
+Good, `send_macro`/`do_macro` are still used by the menu item itself — only the hotkey call site was removed. Now let's remove the pyte hint from the Terminal menu:
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:55:57 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "requires: pip install pyte",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:55:57 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1114:            items.append(("(requires: pip install pyte)", "", lambda: None))
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:56:01 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1108,
+  "limit": 10
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:56:01 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1108	        return True
+1109	
+1110	    def terminal_menu_items():
+1111	        label = "Close Pi Shell" if terminal.is_open else "Open Pi Shell"
+1112	        items = [(label, "", do_toggle_terminal)]
+1113	        if pyte is None:
+1114	            items.append(("(requires: pip install pyte)", "", lambda: None))
+1115	        items.append(("Restart Daemon", "", do_restart_daemon))
+1116	        reboot_label = "Reboot Pi (click again to confirm)" if reboot_arm.is_armed() else "Reboot Pi"
+1117	        items.append((reboot_label, "", do_reboot))
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:56:07 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    def terminal_menu_items():\n        label = \"Close Pi Shell\" if terminal.is_open else \"Open Pi Shell\"\n        items = [(label, \"\", do_toggle_terminal)]\n        if pyte is None:\n            items.append((\"(requires: pip install pyte)\", \"\", lambda: None))\n        items.append((\"Restart Daemon\", \"\", do_restart_daemon))",
+  "new_string": "    def terminal_menu_items():\n        label = \"Close Pi Shell\" if terminal.is_open else \"Open Pi Shell\"\n        items = [(label, \"\", do_toggle_terminal)]\n        items.append((\"Restart Daemon\", \"\", do_restart_daemon))"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:56:08 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:56:13 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:56:14 AM</sup>
+
+Now let's implement the serial port auto-detection. Let's look at the argparse setup and how capture-index auto-detection already works, to mirror the same pattern:
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:56:15 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 995,
+  "limit": 45
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:56:15 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+995	    parser.add_argument("--capture-height", type=int, default=1080,
+996	                         help="request this capture height (default 1080). Pass 0 to not request "
+997	                              "a specific height.")
+998	    parser.add_argument("--capture-fourcc", default=None,
+999	                         help="force a capture pixel format/codec, e.g. MJPG or YUY2 -- some capture "
+1000	                              "cards fall back to a more heavily compressed mode at higher resolutions "
+1001	                              "unless a specific format is requested")
+1002	    parser.add_argument("--baud", type=int, default=115200)
+1003	    parser.add_argument("--debug", action="store_true", help="print each key/mouse event to the terminal")
+1004	    args = parser.parse_args()
+1005	
+1006	    capture_index = args.capture_index
+1007	    if capture_index is None:
+1008	        print("Scanning for capture devices...")
+1009	        devices = find_capture_devices()
+1010	        if 
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:56:20 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:56:21 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "--serial-port",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:56:21 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+23:    python client.py --serial-port COM5 --capture-index 1
+25:    --serial-port    the COM/tty port for the Pi's control link
+988:    parser.add_argument("--serial-port", required=True, help="COM port / tty for the Pi's control link")
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:56:27 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    parser.add_argument(\"--serial-port\", required=True, help=\"COM port / tty for the Pi's control link\")",
+  "new_string": "    parser.add_argument(\"--serial-port\", default=None,\n                         help=\"COM port / tty for the Pi's control link -- omit to auto-select \"\n                              \"the first detected serial port\")"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:56:28 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:56:36 AM</sup>
+
+Now let's add the auto-detection logic and use the resolved value in place of `args.serial_port`:
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:56:38 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    print(f\"Opening serial link on {args.serial_port} @ {args.baud} baud...\")\n    try:\n        link = SerialLink(args.serial_port, args.baud)\n    except serial.SerialException as e:\n        print(f\"Could not open serial port: {e}\")\n        sys.exit(1)",
+  "new_string": "    serial_port = args.serial_port\n    if serial_port is None:\n        print(\"Scanning for serial ports...\")\n        ports = list_serial_ports()\n        if not ports:\n            print(\"No serial ports found. Specify one with --serial-port.\")\n            sys.exit(1)\n        print(f\"Found ports: {ports}. Using {ports[0]}.\")\n        serial_port = ports[0]\n\n    print(f\"Opening serial link on {serial_port} @ {args.baud} baud...\")\n    try:\n        link = SerialLink(serial_port, args.baud)\n    except serial.SerialException as e:\n        print(f\"Could not open serial port: {e}\")\n        sys.exit(1)"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:56:39 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:56:45 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:56:46 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "args\\.serial_port",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:56:46 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1027:    serial_port = args.serial_port
+1073:    port_state = PortState(args.serial_port)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:56:53 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:56:54 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1065,
+  "limit": 12
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:56:54 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1065	    # tracks only presses that started inside the video area, so a release
+1066	    # is still forwarded no matter where the cursor ends up by the time it
+1067	    # happens (dragging out over the menu bar, say), avoiding a stuck
+1068	    # button on the target. A press that started on the menu bar itself
+1069	    # never sets any of these bits.
+1070	    held_target_buttons = 0
+1071	
+1072	    video_state = VideoState(capture_index)
+1073	    port_state = PortState(args.serial_port)
+1074	    storage = StorageState()
+1075	    network = NetworkState()
+1076	    terminal = TerminalWindow(link)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:56:58 AM</sup>
+
+Good, this is after the `serial_port` resolution (which happens earlier, right before `link = SerialLink(...)`). Let's fix it to use the resolved variable:
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:56:59 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    port_state = PortState(args.serial_port)",
+  "new_string": "    port_state = PortState(serial_port)"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:57:00 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:57:05 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:57:06 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "args\\.serial_port",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:57:06 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1027:    serial_port = args.serial_port
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:57:09 AM</sup>
+
+Good, only the one intentional reference remains. Let's compile-check and run the full test suite:
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:57:09 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; .\\.venv\\Scripts\\python.exe -m py_compile client.py; if ($?) { \"compile OK\" }"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:57:20 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+compile OK
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:57:26 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; $scratch = \"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\"; $files = Get-ChildItem \"$scratch\\test_*.py\" | Where-Object { $_.Name -ne \"test_terminal_overlay.py\" }; $failed = 0; foreach ($f in $files) { $out = & .\\.venv\\Scripts\\python.exe $f.FullName 2>&1; if (-not $?) { Write-Host \"FAILED: $($f.Name)\" -ForegroundColor Red; $out; $failed++ } }; if ($failed -eq 0) { \"ALL TEST FILES PASSED\" }"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:57:55 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+FAILED: test_hid_write_retry.py
+python.exe : 2026-08-09 02:57:35,327 [WARNING] dropped HID report to hidg1: endpoint still busy after 5 retries
+At line:1 char:641
++ ... files) { $out = & .\.venv\Scripts\python.exe $f.FullName 2>&1; if (-n ...
++                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (2026-08-09 02:5...after 5 retries:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+2026-08-09 02:57:35,327 [WARNING] failed to write HID report to hidg1: device gone
+recovers from transient EAGAIN within budget OK
+exhausts retries and gives up cleanly within bound (8.7ms) OK
+non-EAGAIN OSError is not retried OK
+ALL HID WRITE RETRY TESTS PASSED
+FAILED: test_power_commands.py
+python.exe : 2026-08-09 02:57:35,844 [INFO] invoking: systemctl restart kvmdongle-daemon
+At line:1 char:641
++ ... files) { $out = & .\.venv\Scripts\python.exe $f.FullName 2>&1; if (-n ...
++                     ~~~~~~~~~~~~
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:58:01 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:58:02 AM</sup>
+
+That's a PowerShell `2>&1` artifact (both actually printed "ALL ... TESTS PASSED"), not a real failure — let me rerun without that redirection, matching how I ran it earlier:
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:58:05 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; $scratch = \"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\"; $files = Get-ChildItem \"$scratch\\test_*.py\" | Where-Object { $_.Name -ne \"test_terminal_overlay.py\" }; $failed = 0; foreach ($f in $files) { .\\.venv\\Scripts\\python.exe $f.FullName | Out-Null; if (-not $?) { Write-Host \"FAILED: $($f.Name)\" -ForegroundColor Red; $failed++ } }; if ($failed -eq 0) { \"ALL TEST FILES PASSED\" }"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:58:40 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+2026-08-09 02:58:20,475 [WARNING] dropped HID report to hidg1: endpoint still busy after 5 retries
+2026-08-09 02:58:20,476 [WARNING] failed to write HID report to hidg1: device gone
+2026-08-09 02:58:20,826 [INFO] invoking: systemctl restart kvmdongle-daemon
+2026-08-09 02:58:20,827 [INFO] invoking: systemctl reboot
+2026-08-09 02:58:20,827 [INFO] invoking: systemctl poweroff
+2026-08-09 02:58:20,827 [INFO] invoking: systemctl reboot
+2026-08-09 02:58:20,827 [WARNING] could not launch systemctl: no such file or directory: systemctl
+ALL TEST FILES PASSED
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:58:45 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:58:46 AM</sup>
+
+Good, confirmed clean. Now let's check `test_client.py` for MACROS assertions that reference the old 3-tuple shape (I changed `MACROS` from `(label, usage_ids, hotkey)` to `(label, usage_ids)`):
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:58:47 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_client.py",
+  "offset": 53,
+  "limit": 8
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:58:47 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+53	
+54	# MACROS: check contents match documented hotkeys and use real usage ids
+55	labels = [m[0] for m in client.MACROS]
+56	assert labels == ["Ctrl+Alt+Del", "Alt+Tab", "Alt+F4", "Win+R", "Win+D"], labels
+57	ctrl_alt_del = dict((m[0], m) for m in client.MACROS)["Ctrl+Alt+Del"]
+58	assert ctrl_alt_del[1] == [protocol.USAGE_MOD_LEFT_CTRL, protocol.USAGE_MOD_LEFT_ALT, 0x4C]
+59	
+60	print("ALL CLIENT KEYMAP TESTS PASSED")
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:58:52 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:58:53 AM</sup>
+
+That test already only touches `m[0]`/`m[1]`, so it passed as-is — just a stale comment to tidy up:
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:58:55 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_client.py",
+  "old_string": "# MACROS: check contents match documented hotkeys and use real usage ids",
+  "new_string": "# MACROS: check labels/order and that usage ids are real HID usage values"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:59:01 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file C:\Users\Marco\AppData\Local\Temp\claude\c--Users-Marco-Documents-GitHub-KVMDongle\0a01b7e4-f584-446c-847d-90e75b76e0b5\scratchpad\test_client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:59:11 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:59:12 AM</sup>
+
+Now let's update the README to match all these changes — check for `--serial-port` required mentions and hotkey documentation:
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:59:13 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "--serial-port|Ctrl\\+Shift|F11|hotkey|pyte",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "output_mode": "content",
+  "-n": true,
+  "-i": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:59:13 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+95:python client.py --serial-port COM5 --capture-index 1
+98:- `--serial-port`: the USB-TTL adapter's port (Windows: `COM5`-style;
+135:- **F11** pastes clipboard text onto the target, character by character.
+136:- **Ctrl+Shift+F1..F5**: Ctrl+Alt+Del, Alt+Tab, Alt+F4, Win+R, Win+D.
+169:  the `pyte` package (see `requirements.txt`) -- the menu item says so if
+404:  "(requires: pip install pyte)" line shows up under the menu item if the
+405:  `pyte` package isn't installed in the laptop's Python environment --
+406:  `pip install pyte` (or `pip install -r requirements.txt`) fixes that;
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:59:17 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "offset": 88,
+  "limit": 50
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:59:17 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+88	  since the Zero W has no spare USB port for external writable storage) --
+89	  ask if you want to move to that later.
+90	
+91	## Running the laptop client
+92	
+93	```
+94	pip install -r requirements.txt
+95	python client.py --serial-port COM5 --capture-index 1
+96	```
+97	
+98	- `--serial-port`: the USB-TTL adapter's port (Windows: `COM5`-style;
+99	  Linux/Mac: `/dev/ttyUSB0`-style)
+100	- `--capture-index`: your HDMI-capture device's OpenCV index (omit to
+101	  auto-scan)
+102	- `--capture-width` / `--capture-height` (default `1920`x`1080`) /
+103	  `--capture-fourcc`: without an explicit width/height, some capture cards
+104	  silently negotiate a lower-detail mode despite still reporting the same
+105	  nominal frame size, which looks grainy/blurry -- requesting an explicit
+106	  mode fixes it. Pass `0` for width/height to not request a specific one.
+107	  See Troubleshooting if 1920x1080 isn't your capture card's native mode.
+108	- `--baud`: must match `pi/daemon.py` (default `115200` on b
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:59:28 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "old_string": "```\npip install -r requirements.txt\npython client.py --serial-port COM5 --capture-index 1\n```\n\n- `--serial-port`: the USB-TTL adapter's port (Windows: `COM5`-style;\n  Linux/Mac: `/dev/ttyUSB0`-style)\n- `--capture-index`: your HDMI-capture device's OpenCV index (omit to\n  auto-scan)",
+  "new_string": "```\npip install -r requirements.txt\npython client.py\n```\nBoth `--serial-port` and `--capture-index` are optional -- omit either (or\nboth, as above) to auto-select the first one found, e.g. for running this\nas a standalone, no-arguments application. Pass them explicitly only if\nyou need to pick a specific one out of several:\n```\npython client.py --serial-port COM5 --capture-index 1\n```\n\n- `--serial-port`: the USB-TTL adapter's port (Windows: `COM5`-style;\n  Linux/Mac: `/dev/ttyUSB0`-style) -- omit to auto-select the first\n  detected serial port\n- `--capture-index`: your HDMI-capture device's OpenCV index (omit to\n  auto-scan)"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:59:29 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\README.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:59:34 AM</sup>
+
+Now the Controls section's F11/Ctrl+Shift hotkey bullets:
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:59:36 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "old_string": "- **F11** pastes clipboard text onto the target, character by character.\n- **Ctrl+Shift+F1..F5**: Ctrl+Alt+Del, Alt+Tab, Alt+F4, Win+R, Win+D.\n- **Video** menu: switch capture devices without restarting `client.py` --",
+  "new_string": "- **Clipboard > Paste Clipboard** types clipboard text onto the target,\n  character by character. **Macros** has Ctrl+Alt+Del, Alt+Tab, Alt+F4,\n  Win+R, and Win+D. Both are menu-only -- no local hotkeys -- so every\n  keystroke while the window is focused is always forwarded straight to\n  the target, with nothing intercepted first.\n- **Video** menu: switch capture devices without restarting `client.py` --"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:59:37 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\README.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:59:42 AM</sup>
+
+Now the pyte-menu-hint references:
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:59:42 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "offset": 160,
+  "limit": 15
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:59:42 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+160	  otherwise it replies with an error saying so. Switching it on/off takes
+161	  a few seconds (hostapd/dnsmasq restarting) and briefly delays key/mouse
+162	  forwarding while it runs, same as an ISO mount/eject.
+163	- **Serial Port** menu: switch which serial port `client.py` talks to
+164	  without restarting it -- lists detected ports (the active one marked
+165	  with `*`) and has a Refresh item to re-scan, e.g. after plugging in a
+166	  different USB-TTL adapter. The new port is only switched over once it's
+167	  confirmed to open successfully; the old one is left untouched (and only
+168	  closed after the switch) if it doesn't.
+169	- **Terminal** menu ("Open Pi Shell"): opens a real `bash` shell running
+170	  on the Pi, over the same serial link, in its **own separate window** --
+171	  not an overlay on the video, so it has its own taskbar entry and can be
+172	  moved/resized/closed independently, and never steals keyboard/mouse
+173	  focus from the main KVM window or vice versa
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:59:46 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "offset": 174,
+  "limit": 10
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:59:46 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+174	  colors, and cursor movement all work, so it looks and feels like an SSH
+175	  session even though it's carried entirely over the KB/mouse/storage
+176	  serial cable (no network involved). Press **F12** or just close the
+177	  window to end the session; if the Pi's shell exits on its own (e.g. you
+178	  typed `exit`), the window shows that and waits for you to close it,
+179	  same as a real terminal emulator noticing its process ended. Requires
+180	  the `pyte` package (see `requirements.txt`) -- the menu item says so if
+181	  it's missing.
+182	- The **Terminal** menu also has three power commands for the Pi itself,
+183	  each of which shells out to `systemctl` on the Pi:
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:59:52 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:59:54 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "old_string": "  same as a real terminal emulator noticing its process ended. Requires\n  the `pyte` package (see `requirements.txt`) -- the menu item says so if\n  it's missing.",
+  "new_string": "  same as a real terminal emulator noticing its process ended. Requires\n  the `pyte` package (see `requirements.txt`) -- if it's missing, clicking\n  \"Open Pi Shell\" just prints a note to the terminal instead of opening\n  anything."
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 2:59:55 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\README.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 2:59:59 AM</sup>
+
+Now the troubleshooting entry that referenced the menu hint:
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:00:00 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "offset": 396,
+  "limit": 14
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:00:00 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+396	  useful as defense-in-depth against a genuinely busy endpoint) helped but
+397	  didn't fully fix it, and the "same position is less reliable" pattern
+398	  pointed at the real issue: clicking without moving sends a position
+399	  report identical to the one already in effect, immediately followed by
+400	  a button-only report -- and something in that gap (host-side duplicate-
+401	  report handling, endpoint queue timing, or both) made the pair
+402	  unreliable specifically when nothing about the position changed.
+403	  Dragging was unaffected since every motion sample already changes the
+404	  position. Properly fixed by combining position and buttons into one
+405	  `MOUSE_STATE` frame/report sent atomically -- see `protocol.py`'s
+406	  `MOUSE_STATE` comment for the full explanation. This needs the same
+407	  `sudo ./install.sh` + restart-the-daemon step as the mouse-descriptor
+408	  change earlier, since it's a protocol change between `client.py` and
+409	  `pi/daemon.py`.
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:00:07 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "offset": 409,
+  "limit": 14
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:00:07 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+409	  `pi/daemon.py`.
+410	- **Terminal menu says "Open Pi Shell" but nothing happens, or the shell
+411	  window opens but the Pi never replies**: the Terminal feature added new
+412	  frame types to `protocol.py` (`SHELL_OPEN`/`SHELL_INPUT`/`SHELL_OUTPUT`/
+413	  etc.) that a Pi still running an older `pi/daemon.py` doesn't know about
+414	  -- same as any other protocol change, this needs `sudo ./install.sh` +
+415	  a daemon restart on the Pi to pick up. Separately, an extra
+416	  "(requires: pip install pyte)" line shows up under the menu item if the
+417	  `pyte` package isn't installed in the laptop's Python environment --
+418	  `pip install pyte` (or `pip install -r requirements.txt`) fixes that;
+419	  `client.py` spawns a second process (`terminal_window.py`) for the shell
+420	  window itself (pygame can only own one window per process), so that
+421	  process needs the same venv/interpreter as `client.py` -- run both from
+422	  the same `pip install -r requirements.txt` environment.
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:00:16 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "old_string": "- **Terminal menu says \"Open Pi Shell\" but nothing happens, or the shell\n  window opens but the Pi never replies**: the Terminal feature added new\n  frame types to `protocol.py` (`SHELL_OPEN`/`SHELL_INPUT`/`SHELL_OUTPUT`/\n  etc.) that a Pi still running an older `pi/daemon.py` doesn't know about\n  -- same as any other protocol change, this needs `sudo ./install.sh` +\n  a daemon restart on the Pi to pick up. Separately, an extra\n  \"(requires: pip install pyte)\" line shows up under the menu item if the\n  `pyte` package isn't installed in the laptop's Python environment --\n  `pip install pyte` (or `pip install -r requirements.txt`) fixes that;\n  `client.py` spawns a second process (`terminal_window.py`) for the shell\n  window itself (pygame can only own one window per process), so that\n  process needs the same venv/interpreter as `client.py` -- run both from\n  the same `pip install -r requirements.txt` environment.",
+  "new_string": "- **Terminal menu says \"Open Pi Shell\" but nothing happens, or the shell\n  window opens but the Pi never replies**: the Terminal feature added new\n  frame types to `protocol.py` (`SHELL_OPEN`/`SHELL_INPUT`/`SHELL_OUTPUT`/\n  etc.) that a Pi still running an older `pi/daemon.py` doesn't know about\n  -- same as any other protocol change, this needs `sudo ./install.sh` +\n  a daemon restart on the Pi to pick up. Separately, if the `pyte`\n  package isn't installed in the laptop's Python environment, clicking\n  \"Open Pi Shell\" just prints a note to the terminal (`pyte is not\n  installed -- run: pip install pyte`) instead of opening anything --\n  `pip install pyte` (or `pip install -r requirements.txt`) fixes that;\n  `client.py` spawns a second process (`terminal_window.py`) for the shell\n  window itself (pygame can only own one window per process), so that\n  process needs the same venv/interpreter 
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:00:17 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\README.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:00:22 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:00:22 AM</sup>
+
+Let's do a final compile check and full regression run to confirm everything's consistent.
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:00:23 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; .\\.venv\\Scripts\\python.exe -m py_compile client.py; if ($?) { \"compile OK\" }"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:01:38 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+compile OK
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:01:44 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; $scratch = \"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\"; $files = Get-ChildItem \"$scratch\\test_*.py\" | Where-Object { $_.Name -ne \"test_terminal_overlay.py\" }; $failed = 0; foreach ($f in $files) { .\\.venv\\Scripts\\python.exe $f.FullName | Out-Null; if (-not $?) { Write-Host \"FAILED: $($f.Name)\" -ForegroundColor Red; $failed++ } }; if ($failed -eq 0) { \"ALL TEST FILES PASSED\" }"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:02:27 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+2026-08-09 03:02:07,398 [WARNING] dropped HID report to hidg1: endpoint still busy after 5 retries
+2026-08-09 03:02:07,398 [WARNING] failed to write HID report to hidg1: device gone
+2026-08-09 03:02:07,754 [INFO] invoking: systemctl restart kvmdongle-daemon
+2026-08-09 03:02:07,754 [INFO] invoking: systemctl reboot
+2026-08-09 03:02:07,754 [INFO] invoking: systemctl poweroff
+2026-08-09 03:02:07,754 [INFO] invoking: systemctl reboot
+2026-08-09 03:02:07,754 [WARNING] could not launch systemctl: no such file or directory: systemctl
+ALL TEST FILES PASSED
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:02:31 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:02:31 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1,
+  "limit": 72
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:02:31 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1	"""
+2	client.py
+3	
+4	Displays the video feed from a USB capture device in a window, forwards
+5	keyboard AND mouse input to a Raspberry Pi Zero W running pi/daemon.py
+6	(which injects them as real USB keyboard/mouse input into the target
+7	machine via its USB OTG port, and also exposes an ISO from its SD card
+8	as read-only USB mass storage on request).
+9	
+10	Keyboard input is always forwarded while the window has focus -- no
+11	toggle needed, since the OS only delivers keyboard events to a focused
+12	window anyway. Mouse input works like a touchscreen, not a captured
+13	relative pointer: your real cursor is always visible and free, and
+14	clicking/dragging in the video area moves the TARGET's cursor to the
+15	corresponding position and clicks/drags there. Nothing is ever hidden
+16	or grabbed, so there's no mode to toggle.
+17	
+18	Requirements:
+19	    pip install pygame opencv-python pyserial pyperclip pyte
+20	
+21	Usage:
+22	    python client.py
+23	    python client.py --serial-port COM
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:02:36 AM</sup>
+
+This all reads correctly. Let's mark this work complete.
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:02:39 AM</sup>
+
+<details>
+<summary>Tool: <code>TodoWrite</code></summary>
+
+```json
+{
+  "todos": [
+    {
+      "content": "Verify no default-ISO-mount logic exists (already removed)",
+      "status": "completed",
+      "activeForm": "Verifying default-ISO removal"
+    },
+    {
+      "content": "Remove macro/clipboard-paste hotkeys (Ctrl+Shift+F1-F5, F11), keep menu items",
+      "status": "completed",
+      "activeForm": "Removing hotkeys"
+    },
+    {
+      "content": "Remove '(requires pip install pyte)' menu hint, keep graceful runtime guard",
+      "status": "completed",
+      "activeForm": "Removing pyte menu hint"
+    },
+    {
+      "content": "Make --serial-port optional with first-available auto-detect",
+      "status": "completed",
+      "activeForm": "Adding serial port auto-detect"
+    },
+    {
+      "content": "Update README + tests, full regression pass",
+      "status": "completed",
+      "activeForm": "Updating docs and running regression"
+    }
+  ]
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 3:02:39 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+Todos have been modified successfully. Ensure that you continue to use the todo list to track your progress. Please proceed with the current tasks if applicable
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 3:02:48 AM</sup>
+
+All four done:
+
+1. **Default ISO mount**: checked thoroughly — no such logic exists anywhere in this codebase's `daemon.py`/`gadget-setup.sh` (it was already removed earlier this session). Must be from your other forked session; nothing to do here.
+2. **Macro/clipboard hotkeys removed**: `Ctrl+Shift+F1..F5` and `F11` no longer intercepted — `MACRO_HOTKEYS` dict and both `KEYDOWN` checks are gone. The **Macros** and **Clipboard → Paste Clipboard** menu items themselves still work exactly as before, just menu-only now, so every keystroke while the window is focused goes straight to the target with nothing intercepted first.
+3. **Pyte menu hint removed**: the Terminal menu no longer shows `(requires: pip install pyte)` as a separate line. The underlying safety check still exists — if `pyte` isn't installed, clicking "Open Pi Shell" just prints a note to the console instead of crashing.
+4. **Serial port auto-detect**: `--serial-port` is now optional, mirroring how `--capture-index` already works — if omitted, it scans with `list_serial_ports()` and uses the first one found (erroring out clearly if none exist). Running `python client.py` with zero arguments now works, moving you closer to that standalone-app goal.
+
+README and tests updated to match; full suite still green.
 
 
 ---
