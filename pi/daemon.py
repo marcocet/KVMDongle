@@ -84,7 +84,7 @@ import protocol
 
 GADGET_INFO_PATH = "/run/kvmdongle/gadget-info.json"
 SERIAL_PORT = "/dev/serial0"
-BAUD_RATE = 460800
+BAUD_RATE = 115200
 MAX_HELD_KEYS = 6
 EJECT_SETTLE_SECONDS = 0.3
 

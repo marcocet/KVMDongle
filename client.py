@@ -26,7 +26,7 @@ Usage:
     --capture-index  the OpenCV device index for your capture card
                       (try 0, 1, 2... if unsure; the app also prints
                       available indices on startup)
-    --baud           serial baud rate, must match pi/daemon.py (default 460800)
+    --baud           serial baud rate, must match pi/daemon.py (default 115200)
     --debug          print each key/mouse event to the terminal
 
 Controls:
@@ -1009,7 +1009,7 @@ def main():
                          help="force a capture pixel format/codec, e.g. MJPG or YUY2 -- some capture "
                               "cards fall back to a more heavily compressed mode at higher resolutions "
                               "unless a specific format is requested")
-    parser.add_argument("--baud", type=int, default=460800)
+    parser.add_argument("--baud", type=int, default=115200)
     parser.add_argument("--debug", action="store_true", help="print each key/mouse event to the terminal")
     args = parser.parse_args()
 
