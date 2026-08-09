@@ -6,8 +6,8 @@
 | **Session ID** | `b2d8841a-7434-4615-9fcb-f34f5020c07a` |
 | **Working Dir** | `c:\Users\Marco\Documents\GitHub\KVMDongle` |
 | **Started** | 7/29/2026, 2:51:51 PM |
-| **Last Updated** | 8/9/2026, 4:02:22 AM |
-| **Messages** | 3071 |
+| **Last Updated** | 8/9/2026, 4:17:36 AM |
+| **Messages** | 3188 |
 
 ---
 
@@ -51062,6 +51062,1936 @@ Done. Renamed every branding instance to **KVMDongle**:
 Left one instance as-is deliberately: the README's `"a DIY KVM/crash-cart"` phrase, now reading `**KVMDongle** is a DIY KVM/crash-cart:` — that's the generic industry term for the category of device, not the project's own name, so both are named there correctly (the project as KVMDongle, the thing it *is* as a crash-cart). Rebuilt the Windows exe to confirm the rename didn't break packaging — `dist/KVMDongle/KVMDongle.exe` builds and runs correctly. Full test suite still green.
 
 Good luck with the macOS build — let me know how it goes.
+
+
+---
+
+## User <sup>8/9/2026, 4:08:26 AM</sup>
+
+mac os build seems to work well!
+
+can you make the debug log always show the equivilent of --debug
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:09:07 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:09:07 AM</sup>
+
+Let's find every `args.debug`-gated print call site to plan this properly.
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:09:08 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "args\\.debug|debug:|if debug",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:09:08 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+695:    if debug:
+725:    if debug:
+736:            if debug:
+1351:        send_macro(link, usage_ids, args.debug, label)
+1354:        send_clipboard_text(link, args.debug)
+1367:        if debug_log.is_open:
+1404:        debug_log_label = "Close Debug Log" if debug_log.is_open else "Open Debug Log"
+1624:        if args.debug and frame_type not in (p.ISO_LIST, p.ISO_MOUNTED, p.ISO_EJECTED, p.AP_STATUS, p.ERROR,
+1689:                    if args.debug:
+1691:                elif args.debug:
+1698:                    if args.debug:
+1731:                        if args.debug:
+1745:                        if args.debug:
+1755:                        if args.debug:
+1765:                    if args.debug:
+1780:    if debug_log.is_open:
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:09:14 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:09:15 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 688,
+  "limit": 55
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:09:15 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+688	    return KEY_MAP.get(event.key)
+689	
+690	
+691	def send_macro(link, usage_ids, debug, label):
+692	    """Press a sequence of keys in order, then release in reverse order,
+693	    with a short delay between each step so the target reliably registers
+694	    every key in the combo."""
+695	    if debug:
+696	        print(f"[MACRO] sending {label}")
+697	    for usage_id in usage_ids:
+698	        link.send_key(True, usage_id)
+699	        time.sleep(0.03)
+700	    for usage_id in reversed(usage_ids):
+701	        link.send_key(False, usage_id)
+702	        time.sleep(0.03)
+703	
+704	
+705	def send_clipboard_text(link, debug):
+706	    """Read the local clipboard and type it out to the target, char by
+707	    char, explicitly pressing/releasing Shift for uppercase/shifted
+708	    characters -- the target sees exactly the same key sequence a real
+709	    keyboard would send. Runs synchronously, so the video feed will pause
+710	    briefly for long text."""
+711	    if pyperclip is None:
+712	    
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:09:41 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:09:41 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1615,
+  "limit": 15
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:09:41 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1615	                storage.error = message
+1616	            elif failed_type in (p.AP_ENABLE, p.AP_DISABLE, p.AP_STATUS_QUERY):
+1617	                network.busy = None
+1618	                network.error = message
+1619	            print(f"[pi error] {message}")
+1620	        elif frame_type == p.SHELL_OUTPUT:
+1621	            terminal.feed(payload)
+1622	        elif frame_type == p.SHELL_CLOSED:
+1623	            terminal.notify_closed()
+1624	        if args.debug and frame_type not in (p.ISO_LIST, p.ISO_MOUNTED, p.ISO_EJECTED, p.AP_STATUS, p.ERROR,
+1625	                                              p.SHELL_OUTPUT, p.SHELL_CLOSED):
+1626	            print(f"[from pi] type=0x{frame_type:02X} payload={payload!r}")
+1627	
+1628	    # Track which pygame keys are currently "down" and what usage ID was
+1629	    # sent, so KEYUP releases the correct code.
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:09:47 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1678,
+  "limit": 95
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:09:47 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1678	                new_h = max(MIN_WINDOW_HEIGHT, event.h)
+1679	                screen = pygame.display.set_mode((new_w, new_h), pygame.RESIZABLE)
+1680	                menu.resize(new_w)
+1681	
+1682	            elif event.type == pygame.KEYDOWN:
+1683	                # Keyboard is always forwarded while this window has focus --
+1684	                # the OS only delivers KEYDOWN/KEYUP events here when it does.
+1685	                usage_id = usage_for_event(event)
+1686	                if usage_id is not None:
+1687	                    active_keys[event.key] = usage_id
+1688	                    link.send_key(True, usage_id)
+1689	                    if args.debug:
+1690	                        print(f"[KEYDOWN] usage=0x{usage_id:02X} ({describe_usage(usage_id)})")
+1691	                elif args.debug:
+1692	                    print(f"[KEYDOWN] unmapped pygame key={pygame.key.name(event.key)!r}, no usage sent")
+1693	
+1694	            elif event.type == pygame.KEYUP:
+1695	                usag
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:09:59 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:10:00 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "send_macro\\(|send_clipboard_text\\(",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:10:00 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+691:def send_macro(link, usage_ids, debug, label):
+705:def send_clipboard_text(link, debug):
+1351:        send_macro(link, usage_ids, args.debug, label)
+1354:        send_clipboard_text(link, args.debug)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:10:13 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:10:23 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "def send_macro(link, usage_ids, debug, label):\n    \"\"\"Press a sequence of keys in order, then release in reverse order,\n    with a short delay between each step so the target reliably registers\n    every key in the combo.\"\"\"\n    if debug:\n        print(f\"[MACRO] sending {label}\")\n    for usage_id in usage_ids:\n        link.send_key(True, usage_id)\n        time.sleep(0.03)\n    for usage_id in reversed(usage_ids):\n        link.send_key(False, usage_id)\n        time.sleep(0.03)\n\n\ndef send_clipboard_text(link, debug):\n    \"\"\"Read the local clipboard and type it out to the target, char by\n    char, explicitly pressing/releasing Shift for uppercase/shifted\n    characters -- the target sees exactly the same key sequence a real\n    keyboard would send. Runs synchronously, so the video feed will pause\n    briefly for long text.\"\"\"\n    if pyperclip is None:\n        print(\"[paste] pyperclip is not installed -- run: pip install pyperclip\")\n        return\n\n    try:\n        text = pyperclip.paste()\n    except Exception as e:\n        print(f\"[paste] could not read clipboard: {e}\")\n        return\n\n    if not text:\n        print(\"[paste] clipboard is empty\")\n        return\n\n    if debug:\n        print(f\"[paste] typing {len(text)} characters from clipboard\")\n\n    for ch in text:\n        if ch == \"\\n\":\n            usage_id, shift = 0x28, False\n        elif ch == \"\\t\":\n            usage_id, shift = 0x2B, False\n        elif ch in CHAR_MAP:\n            usage_id, shift = CHAR_MAP[ch]\n        else:\n            if debug:\n                print(f\"[paste] skipping unsupported character {ch!r}\")\n            continue",
+  "new_string": "def _debug_print(log_buffer, console_enabled, message):\n    \"\"\"Always reaches the Debug Log window via log_buffer; only ALSO\n    printed to a real console/terminal i
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:10:25 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:10:29 AM</sup>
+
+Now let's update the call sites in `main()`:
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:10:30 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "send_macro\\(link, usage_ids, args\\.debug, label\\)|send_clipboard_text\\(link, args\\.debug\\)",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:10:30 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1366:        send_macro(link, usage_ids, args.debug, label)
+1369:        send_clipboard_text(link, args.debug)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:10:35 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1363,
+  "limit": 8
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:10:35 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1363	    running = True
+1364	
+1365	    def do_macro(usage_ids, label):
+1366	        send_macro(link, usage_ids, args.debug, label)
+1367	
+1368	    def do_paste():
+1369	        send_clipboard_text(link, args.debug)
+1370
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:10:43 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    def do_macro(usage_ids, label):\n        send_macro(link, usage_ids, args.debug, label)\n\n    def do_paste():\n        send_clipboard_text(link, args.debug)",
+  "new_string": "    def do_macro(usage_ids, label):\n        send_macro(link, usage_ids, args.debug, label, log_buffer)\n\n    def do_paste():\n        send_clipboard_text(link, args.debug, log_buffer)"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:10:44 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:10:50 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:10:50 AM</sup>
+
+Now `handle_incoming`'s `[from pi]` line:
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:10:51 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1630,
+  "limit": 10
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:10:51 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1630	                storage.error = message
+1631	            elif failed_type in (p.AP_ENABLE, p.AP_DISABLE, p.AP_STATUS_QUERY):
+1632	                network.busy = None
+1633	                network.error = message
+1634	            print(f"[pi error] {message}")
+1635	        elif frame_type == p.SHELL_OUTPUT:
+1636	            terminal.feed(payload)
+1637	        elif frame_type == p.SHELL_CLOSED:
+1638	            terminal.notify_closed()
+1639	        if args.debug and frame_type not in (p.ISO_LIST, p.ISO_MOUNTED, p.ISO_EJECTED, p.AP_STATUS, p.ERROR,
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:10:56 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1639,
+  "limit": 4
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:10:56 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1639	        if args.debug and frame_type not in (p.ISO_LIST, p.ISO_MOUNTED, p.ISO_EJECTED, p.AP_STATUS, p.ERROR,
+1640	                                              p.SHELL_OUTPUT, p.SHELL_CLOSED):
+1641	            print(f"[from pi] type=0x{frame_type:02X} payload={payload!r}")
+1642
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:11:04 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "        if args.debug and frame_type not in (p.ISO_LIST, p.ISO_MOUNTED, p.ISO_EJECTED, p.AP_STATUS, p.ERROR,\n                                              p.SHELL_OUTPUT, p.SHELL_CLOSED):\n            print(f\"[from pi] type=0x{frame_type:02X} payload={payload!r}\")",
+  "new_string": "        if frame_type not in (p.ISO_LIST, p.ISO_MOUNTED, p.ISO_EJECTED, p.AP_STATUS, p.ERROR,\n                               p.SHELL_OUTPUT, p.SHELL_CLOSED):\n            _debug_print(log_buffer, args.debug, f\"[from pi] type=0x{frame_type:02X} payload={payload!r}\")"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:11:06 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:11:11 AM</sup>
+
+Now the 7 event-loop debug prints:
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:11:11 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1694,
+  "limit": 14
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:11:11 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1694	                screen = pygame.display.set_mode((new_w, new_h), pygame.RESIZABLE)
+1695	                menu.resize(new_w)
+1696	
+1697	            elif event.type == pygame.KEYDOWN:
+1698	                # Keyboard is always forwarded while this window has focus --
+1699	                # the OS only delivers KEYDOWN/KEYUP events here when it does.
+1700	                usage_id = usage_for_event(event)
+1701	                if usage_id is not None:
+1702	                    active_keys[event.key] = usage_id
+1703	                    link.send_key(True, usage_id)
+1704	                    if args.debug:
+1705	                        print(f"[KEYDOWN] usage=0x{usage_id:02X} ({describe_usage(usage_id)})")
+1706	                elif args.debug:
+1707	                    print(f"[KEYDOWN] unmapped pygame key={pygame.key.name(event.key)!r}, no usage sent")
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:11:20 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "                if usage_id is not None:\n                    active_keys[event.key] = usage_id\n                    link.send_key(True, usage_id)\n                    if args.debug:\n                        print(f\"[KEYDOWN] usage=0x{usage_id:02X} ({describe_usage(usage_id)})\")\n                elif args.debug:\n                    print(f\"[KEYDOWN] unmapped pygame key={pygame.key.name(event.key)!r}, no usage sent\")\n\n            elif event.type == pygame.KEYUP:\n                usage_id = active_keys.pop(event.key, None)\n                if usage_id is not None:\n                    link.send_key(False, usage_id)\n                    if args.debug:\n                        print(f\"[KEYUP]   usage=0x{usage_id:02X} ({describe_usage(usage_id)})\")",
+  "new_string": "                if usage_id is not None:\n                    active_keys[event.key] = usage_id\n                    link.send_key(True, usage_id)\n                    _debug_print(log_buffer, args.debug,\n                                 f\"[KEYDOWN] usage=0x{usage_id:02X} ({describe_usage(usage_id)})\")\n                else:\n                    _debug_print(log_buffer, args.debug,\n                                 f\"[KEYDOWN] unmapped pygame key={pygame.key.name(event.key)!r}, no usage sent\")\n\n            elif event.type == pygame.KEYUP:\n                usage_id = active_keys.pop(event.key, None)\n                if usage_id is not None:\n                    link.send_key(False, usage_id)\n                    _debug_print(log_buffer, args.debug,\n                                 f\"[KEYUP]   usage=0x{usage_id:02X} ({describe_usage(usage_id)})\")"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:11:22 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:11:29 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:11:30 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1729,
+  "limit": 40
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:11:30 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1729	                    # Our own UI space (the bar itself, or an open dropdown
+1730	                    # for a non-left click) -- never forward to the target.
+1731	                    continue
+1732	                button = {1: protocol.MOUSE_LEFT, 2: protocol.MOUSE_MIDDLE, 3: protocol.MOUSE_RIGHT}.get(event.button)
+1733	                if button is not None:
+1734	                    frac = map_click_to_target(event.pos, video_rect)
+1735	                    if frac is not None:
+1736	                        # Position and buttons travel together in ONE
+1737	                        # frame/report -- touchscreen-style, not a relative
+1738	                        # capture. Sending them as two separate writes (a
+1739	                        # move, then a distinct button-down) was a real,
+1740	                        # confirmed bug: unreliable clicks specifically
+1741	                        # when the position didn't need to change, since
+1742	                        # nothing about a 
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:11:39 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "                        held_target_buttons |= button\n                        link.send_mouse_state(*frac, held_target_buttons)\n                        if args.debug:\n                            print(f\"[MOUSE DOWN] button={button} at ({frac[0]:.3f}, {frac[1]:.3f})\")",
+  "new_string": "                        held_target_buttons |= button\n                        link.send_mouse_state(*frac, held_target_buttons)\n                        _debug_print(log_buffer, args.debug,\n                                     f\"[MOUSE DOWN] button={button} at ({frac[0]:.3f}, {frac[1]:.3f})\")"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:11:41 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:11:49 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "                    frac = map_click_to_target(event.pos, video_rect)\n                    if frac is not None:\n                        link.send_mouse_state(*frac, held_target_buttons)\n                        if args.debug:\n                            print(f\"[MOUSE UP]   button={button}\")",
+  "new_string": "                    frac = map_click_to_target(event.pos, video_rect)\n                    if frac is not None:\n                        link.send_mouse_state(*frac, held_target_buttons)\n                        _debug_print(log_buffer, args.debug, f\"[MOUSE UP]   button={button}\")"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:11:50 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:11:55 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1763,
+  "limit": 18
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:11:55 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1763	            elif event.type == pygame.MOUSEMOTION:
+1764	                # No hover on a touchscreen -- only forward motion while
+1765	                # dragging (a button we sent down is still held).
+1766	                if held_target_buttons:
+1767	                    frac = map_click_to_target(event.pos, video_rect)
+1768	                    if frac is not None:
+1769	                        link.send_mouse_state(*frac, held_target_buttons)
+1770	                        if args.debug:
+1771	                            print(f"[MOUSE DRAG] at ({frac[0]:.3f}, {frac[1]:.3f})")
+1772	
+1773	            elif event.type == pygame.MOUSEWHEEL:
+1774	                pos = pygame.mouse.get_pos()
+1775	                if pos[1] >= MENU_HEIGHT:
+1776	                    frac = map_click_to_target(pos, video_rect)
+1777	                    if frac is not None:
+1778	                        link.send_mouse_state(*frac, held_target_buttons)
+1779	                    link.send_mouse_scroll(event.y)
+1780	  
+...(truncated)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:12:02 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "                    frac = map_click_to_target(event.pos, video_rect)\n                    if frac is not None:\n                        link.send_mouse_state(*frac, held_target_buttons)\n                        if args.debug:\n                            print(f\"[MOUSE DRAG] at ({frac[0]:.3f}, {frac[1]:.3f})\")",
+  "new_string": "                    frac = map_click_to_target(event.pos, video_rect)\n                    if frac is not None:\n                        link.send_mouse_state(*frac, held_target_buttons)\n                        _debug_print(log_buffer, args.debug, f\"[MOUSE DRAG] at ({frac[0]:.3f}, {frac[1]:.3f})\")"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:12:04 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:12:09 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1771,
+  "limit": 10
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:12:09 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1771	
+1772	            elif event.type == pygame.MOUSEWHEEL:
+1773	                pos = pygame.mouse.get_pos()
+1774	                if pos[1] >= MENU_HEIGHT:
+1775	                    frac = map_click_to_target(pos, video_rect)
+1776	                    if frac is not None:
+1777	                        link.send_mouse_state(*frac, held_target_buttons)
+1778	                    link.send_mouse_scroll(event.y)
+1779	                    if args.debug:
+1780	                        print(f"[MOUSE SCROLL] amount={event.y}")
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:12:17 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "                    link.send_mouse_scroll(event.y)\n                    if args.debug:\n                        print(f\"[MOUSE SCROLL] amount={event.y}\")",
+  "new_string": "                    link.send_mouse_scroll(event.y)\n                    _debug_print(log_buffer, args.debug, f\"[MOUSE SCROLL] amount={event.y}\")"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:12:18 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:12:23 AM</sup>
+
+Let's verify no `args.debug`-gated print sites remain:
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:12:24 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "args\\.debug|if debug:",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:12:24 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1366:        send_macro(link, usage_ids, args.debug, label, log_buffer)
+1369:        send_clipboard_text(link, args.debug, log_buffer)
+1641:            _debug_print(log_buffer, args.debug, f"[from pi] type=0x{frame_type:02X} payload={payload!r}")
+1704:                    _debug_print(log_buffer, args.debug,
+1707:                    _debug_print(log_buffer, args.debug,
+1714:                    _debug_print(log_buffer, args.debug,
+1747:                        _debug_print(log_buffer, args.debug,
+1761:                        _debug_print(log_buffer, args.debug, f"[MOUSE UP]   button={button}")
+1770:                        _debug_print(log_buffer, args.debug, f"[MOUSE DRAG] at ({frac[0]:.3f}, {frac[1]:.3f})")
+1779:                    _debug_print(log_buffer, args.debug, f"[MOUSE SCROLL] amount={event.y}")
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:12:29 AM</sup>
+
+All refactored consistently. Let's compile-check and run the full test suite:
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:12:29 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; .\\.venv\\Scripts\\python.exe -m py_compile client.py; if ($?) { \"compile OK\" }"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:12:34 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+compile OK
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:12:41 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; $scratch = \"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\"; $files = Get-ChildItem \"$scratch\\test_*.py\" | Where-Object { $_.Name -ne \"test_terminal_overlay.py\" }; $failed = 0; foreach ($f in $files) { .\\.venv\\Scripts\\python.exe $f.FullName | Out-Null; if (-not $?) { Write-Host \"FAILED: $($f.Name)\" -ForegroundColor Red; $failed++ } }; if ($failed -eq 0) { \"ALL TEST FILES PASSED\" }",
+  "timeout": 60000
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:13:23 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+2026-08-09 04:13:02,287 [WARNING] dropped HID report to hidg1: endpoint still busy after 5 retries
+2026-08-09 04:13:02,287 [WARNING] failed to write HID report to hidg1: device gone
+2026-08-09 04:13:02,749 [INFO] invoking: systemctl restart kvmdongle-daemon
+2026-08-09 04:13:02,749 [INFO] invoking: systemctl reboot
+2026-08-09 04:13:02,749 [INFO] invoking: systemctl poweroff
+2026-08-09 04:13:02,749 [INFO] invoking: systemctl reboot
+2026-08-09 04:13:02,749 [WARNING] could not launch systemctl: no such file or directory: systemctl
+ALL TEST FILES PASSED
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:13:35 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:13:35 AM</sup>
+
+Let's add a test for the new `_debug_print` decoupling logic, since it's genuinely new behavior worth pinning down:
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:13:36 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_debug_log.py",
+  "offset": 1,
+  "limit": 15
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:13:36 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1	import os
+2	import subprocess
+3	import sys
+4	import threading
+5	import time
+6	
+7	sys.path.insert(0, r"C:\Users\Marco\AppData\Local\Temp\claude\c--Users-Marco-Documents-GitHub-KVMDongle\0a01b7e4-f584-446c-847d-90e75b76e0b5\scratchpad\fake_pygame_pkg")
+8	sys.path.insert(0, r"c:\Users\Marco\Documents\GitHub\KVMDongle")
+9	
+10	import pygame  # the fake stub
+11	import client
+12	import debug_log_window as dlw
+13	
+14	
+15	# --- _LogBuffer: append/snapshot/listeners/eviction -----------------------
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:13:42 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_debug_log.py",
+  "offset": 54,
+  "limit": 20
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:13:42 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+54	
+55	tee.write("Hello, ")
+56	tee.write("world\nSecond li")
+57	tee.write("ne\n")
+58	assert seen == ["Hello, world", "Second line"], seen
+59	assert real.written == ["Hello, ", "world\nSecond li", "ne\n"], "must still tee through to the real stream"
+60	print("_StreamTee splits into complete lines + tees through OK")
+61	
+62	# real_stream=None must not crash (the actual no-console scenario)
+63	tee_none = client._StreamTee(None, buf2)
+64	tee_none.write("no console here\n")
+65	tee_none.flush()
+66	assert seen[-1] == "no console here"
+67	print("_StreamTee tolerates real_stream=None OK")
+68	
+69	# --- DebugLogWindow: uses a fake subprocess wired to a real OS pipe, same
+70	# technique as test_terminal_window.py, so the actual os.read()/write()
+71	# calls in client.py run for real -- only process-spawning is faked. ---
+72	class FakeProcess:
+73	    def __init__(self):
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:13:47 AM</sup>
+
+Let's insert the `_debug_print` test right after the `_StreamTee` tests:
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:13:53 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_debug_log.py",
+  "old_string": "# real_stream=None must not crash (the actual no-console scenario)\ntee_none = client._StreamTee(None, buf2)\ntee_none.write(\"no console here\\n\")\ntee_none.flush()\nassert seen[-1] == \"no console here\"\nprint(\"_StreamTee tolerates real_stream=None OK\")",
+  "new_string": "# real_stream=None must not crash (the actual no-console scenario)\ntee_none = client._StreamTee(None, buf2)\ntee_none.write(\"no console here\\n\")\ntee_none.flush()\nassert seen[-1] == \"no console here\"\nprint(\"_StreamTee tolerates real_stream=None OK\")\n\n# --- _debug_print(): the Debug Log window must ALWAYS get these lines\n# (the \"equivalent of --debug\" ask), regardless of whether --debug was\n# passed -- but the real console/terminal must still only get them when\n# --debug WAS passed, and never get them twice (print() already reaches\n# the log buffer via the installed _StreamTee, so calling both would\n# duplicate every line). ---\nbuf3_dp = client._LogBuffer()\nreal_dp = FakeStream()\ntee_dp = client._StreamTee(real_dp, buf3_dp)\nold_stdout = client.sys.stdout\nclient.sys.stdout = tee_dp\ntry:\n    client._debug_print(buf3_dp, True, \"[KEYDOWN] with --debug\")\n    client._debug_print(buf3_dp, False, \"[KEYDOWN] without --debug\")\nfinally:\n    client.sys.stdout = old_stdout\n\nassert buf3_dp.snapshot() == [\"[KEYDOWN] with --debug\", \"[KEYDOWN] without --debug\"], buf3_dp.snapshot()\nconsole_output = \"\".join(real_dp.written)\nassert \"[KEYDOWN] with --debug\" in console_output, console_output\nassert \"[KEYDOWN] without --debug\" not in console_output, \\\n    \"must not reach the real console/terminal when --debug wasn't passed\"\nprint(\"_debug_print() always reaches the Debug Log, only reaches the console with --debug, never duplicated OK\")"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:13:54 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file C:\Users\Marco\AppData\Local\Temp\claude\c--Users-Marco-Documents-GitHub-KVMDongle\0a01b7e4-f584-446c-847d-90e75b76e0b5\scratchpad\test_debug_log.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:14:00 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; .\\.venv\\Scripts\\python.exe \"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\\test_debug_log.py\"",
+  "timeout": 30000
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:14:05 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+_LogBuffer append/snapshot/eviction/listener OK
+_LogBuffer remove_listener OK
+_StreamTee splits into complete lines + tees through OK
+_StreamTee tolerates real_stream=None OK
+_debug_print() always reaches the Debug Log, only reaches the console with --debug, never duplicated OK
+DebugLogWindow.open() replays history then relays new lines OK
+DebugLogWindow.close() detaches listener + terminates process OK
+DebugLogWindow double-close is a safe no-op OK
+DebugLogWindow survives concurrent print()-from-multiple-threads without corrupting lines OK
+debug_log_window.line_color() tags errors/warnings distinctly OK
+ALL DEBUG LOG TESTS PASSED
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:14:11 AM</sup>
+
+All pass. Let's run the full regression suite one final time:
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:14:13 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; $scratch = \"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\"; $files = Get-ChildItem \"$scratch\\test_*.py\" | Where-Object { $_.Name -ne \"test_terminal_overlay.py\" }; $failed = 0; foreach ($f in $files) { .\\.venv\\Scripts\\python.exe $f.FullName | Out-Null; if (-not $?) { Write-Host \"FAILED: $($f.Name)\" -ForegroundColor Red; $failed++ } }; if ($failed -eq 0) { \"ALL TEST FILES PASSED\" }",
+  "timeout": 60000
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:14:44 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+2026-08-09 04:14:22,810 [WARNING] dropped HID report to hidg1: endpoint still busy after 5 retries
+2026-08-09 04:14:22,810 [WARNING] failed to write HID report to hidg1: device gone
+2026-08-09 04:14:23,284 [INFO] invoking: systemctl restart kvmdongle-daemon
+2026-08-09 04:14:23,284 [INFO] invoking: systemctl reboot
+2026-08-09 04:14:23,284 [INFO] invoking: systemctl poweroff
+2026-08-09 04:14:23,284 [INFO] invoking: systemctl reboot
+2026-08-09 04:14:23,284 [WARNING] could not launch systemctl: no such file or directory: systemctl
+ALL TEST FILES PASSED
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:14:48 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:14:48 AM</sup>
+
+Now let's update the docstring and README to describe this behavior:
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:14:49 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "--debug.*print each|Open Debug Log opens",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:14:49 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+34:    --debug          print each key/mouse event to the terminal
+79:    - Debug > Open Debug Log opens a separate window showing everything
+1287:    parser.add_argument("--debug", action="store_true", help="print each key/mouse event to the terminal")
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:14:55 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 30,
+  "limit": 6
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:14:55 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+30	    --capture-index  the OpenCV device index for your capture card
+31	                      (try 0, 1, 2... if unsure; the app also prints
+32	                      available indices on startup) -- omit to auto-scan
+33	    --baud           serial baud rate, must match pi/daemon.py (default 115200)
+34	    --debug          print each key/mouse event to the terminal
+35
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:15:01 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    --debug          print each key/mouse event to the terminal",
+  "new_string": "    --debug          also print each key/mouse event to the real console/\n                      terminal (the Debug > Open Debug Log window always\n                      shows this detail regardless of --debug -- this\n                      flag only controls whether it ALSO goes to a real\n                      console, which isn't spammed with it by default)"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:15:03 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:15:08 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 1287,
+  "limit": 2
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:15:08 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1287	                         help="force a capture pixel format/codec, e.g. MJPG or YUY2 -- some capture "
+1288	                              "cards fall back to a more heavily compressed mode at higher resolutions "
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:15:16 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "parser\\.add_argument\\(\"--debug\"",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:15:17 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+1291:    parser.add_argument("--debug", action="store_true", help="print each key/mouse event to the terminal")
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:15:22 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    parser.add_argument(\"--debug\", action=\"store_true\", help=\"print each key/mouse event to the terminal\")",
+  "new_string": "    parser.add_argument(\"--debug\", action=\"store_true\",\n                         help=\"also print each key/mouse event to a real console/terminal -- the \"\n                              \"Debug Log window (Debug menu) always shows this regardless of this flag\")"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:15:23 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:15:28 AM</sup>
+
+Now let's update the Debug Log's Controls description in the docstring:
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:15:28 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 78,
+  "limit": 10
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:15:28 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+78	      Pi / Shutdown Pi (click once to arm -- the label changes to prompt
+79	      a second click within ~4 seconds, or it just disarms itself). None
+80	      of these get a "success" reply, since whatever would send one (the
+81	      daemon process, or the whole machine) is exactly what's going away;
+82	      watch the connection light instead.
+83	    - Debug > Open Debug Log opens a separate window showing everything
+84	      this app itself prints (serial errors, macro/paste activity, Pi
+85	      replies with --debug, etc). This is the only way to see any of it
+86	      once packaged as a windowed/console-less standalone application
+87	      (a Windows EXE built without a console, a macOS .app bundle, ...) --
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:15:34 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "offset": 83,
+  "limit": 10
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:15:34 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+83	    - Debug > Open Debug Log opens a separate window showing everything
+84	      this app itself prints (serial errors, macro/paste activity, Pi
+85	      replies with --debug, etc). This is the only way to see any of it
+86	      once packaged as a windowed/console-less standalone application
+87	      (a Windows EXE built without a console, a macOS .app bundle, ...) --
+88	      there's no terminal for the OS to attach in the first place, so
+89	      every print() would otherwise go nowhere anyone could ever see.
+90	      Opening it late still shows everything printed since startup, not
+91	      just from that point on. Lines mentioning "error"/"warning" are
+92	      highlighted so problems jump out while scanning a long log.
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:15:43 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\client.py",
+  "old_string": "    - Debug > Open Debug Log opens a separate window showing everything\n      this app itself prints (serial errors, macro/paste activity, Pi\n      replies with --debug, etc). This is the only way to see any of it\n      once packaged as a windowed/console-less standalone application\n      (a Windows EXE built without a console, a macOS .app bundle, ...) --\n      there's no terminal for the OS to attach in the first place, so\n      every print() would otherwise go nowhere anyone could ever see.\n      Opening it late still shows everything printed since startup, not\n      just from that point on. Lines mentioning \"error\"/\"warning\" are\n      highlighted so problems jump out while scanning a long log.",
+  "new_string": "    - Debug > Open Debug Log opens a separate window showing everything\n      this app itself prints (serial errors, macro/paste activity, Pi\n      replies) -- including full per-key/mouse-event detail ALWAYS, the\n      same detail --debug controls for a real console/terminal, but\n      without needing to remember that flag (there's often no CLI to pass\n      it to at all, e.g. double-clicking a packaged app). This is the\n      only way to see any of it once packaged as a windowed/console-less\n      standalone application (a Windows EXE built without a console, a\n      macOS .app bundle, ...) -- there's no terminal for the OS to attach\n      in the first place, so every print() would otherwise go nowhere\n      anyone could ever see. Opening it late still shows everything\n      printed since startup, not just from that point on. Lines\n      mentioning \"error\"/\"warning\" are highlighted so problems jump out\n      while scanning a long log."
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:15:44 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\client.py has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:15:50 AM</sup>
+
+Now let's update the README's Debug menu section and `--debug` flag description:
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:15:50 AM</sup>
+
+<details>
+<summary>Tool: <code>Grep</code></summary>
+
+```json
+{
+  "pattern": "--debug|Open Debug Log",
+  "path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "output_mode": "content",
+  "-n": true
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:15:50 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+122:- `--debug`: prints every key/mouse event and Pi reply to the terminal
+198:- **Debug > Open Debug Log** opens another separate window showing
+200:  activity, Pi replies with `--debug`, and so on. This is the only way to
+319:  hiccups by watching `--debug` output timestamps against actual mouse
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:15:55 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "offset": 120,
+  "limit": 4
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:15:55 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+120	- `--baud`: must match `pi/daemon.py` (default `115200` on both ends -- a
+121	  higher rate (460800) was tried and reverted; see Troubleshooting)
+122	- `--debug`: prints every key/mouse event and Pi reply to the terminal
+123
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:16:04 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "old_string": "- `--debug`: prints every key/mouse event and Pi reply to the terminal",
+  "new_string": "- `--debug`: also prints every key/mouse event and Pi reply to a real\n  console/terminal. The Debug menu's Debug Log window always shows this\n  detail regardless of this flag -- `--debug` only controls whether it\n  ALSO reaches a real console, which isn't spammed with it by default"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:16:05 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\README.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:16:13 AM</sup>
+
+<details>
+<summary>Tool: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "offset": 198,
+  "limit": 12
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:16:13 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+198	  the `pyte` package (see `requirements.txt`) -- if it's missing, clicking
+199	  "Open Pi Shell" just prints a note to the terminal instead of opening
+200	  anything.
+201	- **Debug > Open Debug Log** opens another separate window showing
+202	  everything `client.py` itself prints -- serial errors, macro/paste
+203	  activity, Pi replies with `--debug`, and so on. This is the only way to
+204	  see any of that once packaged as a windowed/console-less standalone
+205	  application (a Windows EXE built without a console, a macOS `.app`
+206	  bundle, ...), since there's no terminal for the OS to even attach in
+207	  the first place -- every `print()` in the whole app would otherwise go
+208	  nowhere anyone could ever see, errors included. Opening it late still
+209	  shows everything printed since startup, not just from that point on,
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:16:22 AM</sup>
+
+<details>
+<summary>Tool: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "c:\\Users\\Marco\\Documents\\GitHub\\KVMDongle\\README.md",
+  "old_string": "- **Debug > Open Debug Log** opens another separate window showing\n  everything `client.py` itself prints -- serial errors, macro/paste\n  activity, Pi replies with `--debug`, and so on. This is the only way to\n  see any of that once packaged as a windowed/console-less standalone\n  application (a Windows EXE built without a console, a macOS `.app`\n  bundle, ...), since there's no terminal for the OS to even attach in\n  the first place -- every `print()` in the whole app would otherwise go\n  nowhere anyone could ever see, errors included. Opening it late still\n  shows everything printed since startup, not just from that point on,",
+  "new_string": "- **Debug > Open Debug Log** opens another separate window showing\n  everything `client.py` itself prints -- serial errors, macro/paste\n  activity, Pi replies, and so on -- including full per-key/mouse-event\n  detail **always**, the same detail `--debug` controls for a real\n  console/terminal, but without needing to remember that flag (there's\n  often no CLI to pass it to at all, e.g. double-clicking a packaged\n  app). This is the only way to see any of that once packaged as a\n  windowed/console-less standalone application (a Windows EXE built\n  without a console, a macOS `.app` bundle, ...), since there's no\n  terminal for the OS to even attach in the first place -- every\n  `print()` in the whole app would otherwise go nowhere anyone could\n  ever see, errors included. Opening it late still shows everything\n  printed since startup, not just from that point on,"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:16:23 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+The file c:\Users\Marco\Documents\GitHub\KVMDongle\README.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:16:28 AM</sup>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:16:28 AM</sup>
+
+Final compile check and regression pass:
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:16:29 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; .\\.venv\\Scripts\\python.exe -m py_compile client.py; if ($?) { \"compile OK\" }"
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:16:43 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+compile OK
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:16:50 AM</sup>
+
+<details>
+<summary>Tool: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "cd C:\\Users\\Marco\\Documents\\GitHub\\KVMDongle; $scratch = \"C:\\Users\\Marco\\AppData\\Local\\Temp\\claude\\c--Users-Marco-Documents-GitHub-KVMDongle\\0a01b7e4-f584-446c-847d-90e75b76e0b5\\scratchpad\"; $files = Get-ChildItem \"$scratch\\test_*.py\" | Where-Object { $_.Name -ne \"test_terminal_overlay.py\" }; $failed = 0; foreach ($f in $files) { .\\.venv\\Scripts\\python.exe $f.FullName | Out-Null; if (-not $?) { Write-Host \"FAILED: $($f.Name)\" -ForegroundColor Red; $failed++ } }; if ($failed -eq 0) { \"ALL TEST FILES PASSED\" }",
+  "timeout": 60000
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:17:20 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+2026-08-09 04:16:59,024 [WARNING] dropped HID report to hidg1: endpoint still busy after 5 retries
+2026-08-09 04:16:59,025 [WARNING] failed to write HID report to hidg1: device gone
+2026-08-09 04:16:59,481 [INFO] invoking: systemctl restart kvmdongle-daemon
+2026-08-09 04:16:59,482 [INFO] invoking: systemctl reboot
+2026-08-09 04:16:59,482 [INFO] invoking: systemctl poweroff
+2026-08-09 04:16:59,482 [INFO] invoking: systemctl reboot
+2026-08-09 04:16:59,482 [WARNING] could not launch systemctl: no such file or directory: systemctl
+ALL TEST FILES PASSED
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:17:27 AM</sup>
+
+<details>
+<summary>Tool: <code>TodoWrite</code></summary>
+
+```json
+{
+  "todos": [
+    {
+      "content": "Add _debug_print() helper decoupling console output from Debug Log capture",
+      "status": "completed",
+      "activeForm": "Adding _debug_print() helper"
+    },
+    {
+      "content": "Refactor all --debug-gated print sites (macro, paste, from-pi, key/mouse events)",
+      "status": "completed",
+      "activeForm": "Refactoring debug print sites"
+    },
+    {
+      "content": "Test the decoupled behavior + full regression pass",
+      "status": "completed",
+      "activeForm": "Testing and regression"
+    },
+    {
+      "content": "Update docstring + README",
+      "status": "completed",
+      "activeForm": "Updating docs"
+    }
+  ]
+}
+```
+
+</details>
+
+
+---
+
+## User <sup>8/9/2026, 4:17:27 AM</sup>
+
+<details>
+<summary>Tool Result</summary>
+
+```
+Todos have been modified successfully. Ensure that you continue to use the todo list to track your progress. Please proceed with the current tasks if applicable
+```
+
+</details>
+
+
+---
+
+## Assistant <sup>8/9/2026, 4:17:36 AM</sup>
+
+Great news on macOS! Done with the debug log change:
+
+Every place that used to gate a message behind `if args.debug:` (macro sends, clipboard paste activity, unhandled Pi replies, and all the `[KEYDOWN]`/`[KEYUP]`/`[MOUSE DOWN/UP/DRAG/SCROLL]` event logging) now goes through a small `_debug_print(log_buffer, console_enabled, message)` helper: the **Debug Log window always gets the line**, while the **real console/terminal only gets it if `--debug` was actually passed** — same as before, so a plain terminal session doesn't get flooded with a line per keystroke unless you ask for it. The two had to be decoupled rather than just removing the flag entirely, since `print()` already reaches the log buffer via the `sys.stdout` tee — calling both would've duplicated every line, which the new test specifically checks for (along with confirming console output still respects `--debug` and the log buffer doesn't).
+
+This means the Debug Log window is now genuinely just as useful with or without `--debug` — which matters most for exactly the standalone/packaged case you're testing on macOS, where there's no CLI to pass flags to in the first place. Full test suite (22 files now) still green, docstring and README updated.
 
 
 ---

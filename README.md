@@ -119,7 +119,10 @@ python client.py --serial-port COM5 --capture-index 1
   See Troubleshooting if 1920x1080 isn't your capture card's native mode.
 - `--baud`: must match `pi/daemon.py` (default `115200` on both ends -- a
   higher rate (460800) was tried and reverted; see Troubleshooting)
-- `--debug`: prints every key/mouse event and Pi reply to the terminal
+- `--debug`: also prints every key/mouse event and Pi reply to a real
+  console/terminal. The Debug menu's Debug Log window always shows this
+  detail regardless of this flag -- `--debug` only controls whether it
+  ALSO reaches a real console, which isn't spammed with it by default
 
 On Windows, `client.py` opens the capture device via DirectShow rather than
 OpenCV's default Media Foundation backend, and marks the process
@@ -197,13 +200,17 @@ grainy/blurry here" (see Troubleshooting).
   anything.
 - **Debug > Open Debug Log** opens another separate window showing
   everything `client.py` itself prints -- serial errors, macro/paste
-  activity, Pi replies with `--debug`, and so on. This is the only way to
-  see any of that once packaged as a windowed/console-less standalone
-  application (a Windows EXE built without a console, a macOS `.app`
-  bundle, ...), since there's no terminal for the OS to even attach in
-  the first place -- every `print()` in the whole app would otherwise go
-  nowhere anyone could ever see, errors included. Opening it late still
-  shows everything printed since startup, not just from that point on,
+  activity, Pi replies, and so on -- including full per-key/mouse-event
+  detail **always**, the same detail `--debug` controls for a real
+  console/terminal, but without needing to remember that flag (there's
+  often no CLI to pass it to at all, e.g. double-clicking a packaged
+  app). This is the only way to see any of that once packaged as a
+  windowed/console-less standalone application (a Windows EXE built
+  without a console, a macOS `.app` bundle, ...), since there's no
+  terminal for the OS to even attach in the first place -- every
+  `print()` in the whole app would otherwise go nowhere anyone could
+  ever see, errors included. Opening it late still shows everything
+  printed since startup, not just from that point on,
   and lines mentioning "error"/"warning" are color-highlighted so
   problems jump out while scanning a long log.
 - The **Debug** menu also has three power commands for the Pi itself,

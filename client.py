@@ -31,7 +31,11 @@ Usage:
                       (try 0, 1, 2... if unsure; the app also prints
                       available indices on startup) -- omit to auto-scan
     --baud           serial baud rate, must match pi/daemon.py (default 115200)
-    --debug          print each key/mouse event to the terminal
+    --debug          also print each key/mouse event to the real console/
+                      terminal (the Debug > Open Debug Log window always
+                      shows this detail regardless of --debug -- this
+                      flag only controls whether it ALSO goes to a real
+                      console, which isn't spammed with it by default)
 
 Controls:
     - Click into the video window to give it focus, then type normally.
@@ -78,14 +82,18 @@ Controls:
       watch the connection light instead.
     - Debug > Open Debug Log opens a separate window showing everything
       this app itself prints (serial errors, macro/paste activity, Pi
-      replies with --debug, etc). This is the only way to see any of it
-      once packaged as a windowed/console-less standalone application
-      (a Windows EXE built without a console, a macOS .app bundle, ...) --
-      there's no terminal for the OS to attach in the first place, so
-      every print() would otherwise go nowhere anyone could ever see.
-      Opening it late still shows everything printed since startup, not
-      just from that point on. Lines mentioning "error"/"warning" are
-      highlighted so problems jump out while scanning a long log.
+      replies) -- including full per-key/mouse-event detail ALWAYS, the
+      same detail --debug controls for a real console/terminal, but
+      without needing to remember that flag (there's often no CLI to pass
+      it to at all, e.g. double-clicking a packaged app). This is the
+      only way to see any of it once packaged as a windowed/console-less
+      standalone application (a Windows EXE built without a console, a
+      macOS .app bundle, ...) -- there's no terminal for the OS to attach
+      in the first place, so every print() would otherwise go nowhere
+      anyone could ever see. Opening it late still shows everything
+      printed since startup, not just from that point on. Lines
+      mentioning "error"/"warning" are highlighted so problems jump out
+      while scanning a long log.
     - Use Session > Quit in the menu bar, or the window's close button,
       to exit (there's no local keyboard shortcut for this, since every
       keystroke while focused is forwarded to the target).
@@ -688,12 +696,29 @@ def usage_for_event(event):
     return KEY_MAP.get(event.key)
 
 
-def send_macro(link, usage_ids, debug, label):
+def _debug_print(log_buffer, console_enabled, message):
+    """Always reaches the Debug Log window via log_buffer; only ALSO
+    printed to a real console/terminal if --debug was passed. The two are
+    intentionally decoupled: printing a line per keystroke/mouse move by
+    default would flood a plain terminal session, which is exactly what
+    --debug exists to opt into -- but the Debug Log window's whole point
+    is showing this detail without needing to remember a CLI flag at all,
+    especially for a packaged standalone app that has no CLI to pass one
+    to in the first place. print() already reaches the log buffer too
+    (via the sys.stdout tee installed in main()), so calling both here
+    would duplicate every line -- append directly instead whenever the
+    console path is skipped."""
+    if console_enabled:
+        print(message)
+    else:
+        log_buffer.append_line(message)
+
+
+def send_macro(link, usage_ids, debug, label, log_buffer):
     """Press a sequence of keys in order, then release in reverse order,
     with a short delay between each step so the target reliably registers
     every key in the combo."""
-    if debug:
-        print(f"[MACRO] sending {label}")
+    _debug_print(log_buffer, debug, f"[MACRO] sending {label}")
     for usage_id in usage_ids:
         link.send_key(True, usage_id)
         time.sleep(0.03)
@@ -702,7 +727,7 @@ def send_macro(link, usage_ids, debug, label):
         time.sleep(0.03)
 
 
-def send_clipboard_text(link, debug):
+def send_clipboard_text(link, debug, log_buffer):
     """Read the local clipboard and type it out to the target, char by
     char, explicitly pressing/releasing Shift for uppercase/shifted
     characters -- the target sees exactly the same key sequence a real
@@ -722,8 +747,7 @@ def send_clipboard_text(link, debug):
         print("[paste] clipboard is empty")
         return
 
-    if debug:
-        print(f"[paste] typing {len(text)} characters from clipboard")
+    _debug_print(log_buffer, debug, f"[paste] typing {len(text)} characters from clipboard")
 
     for ch in text:
         if ch == "\n":
@@ -733,8 +757,7 @@ def send_clipboard_text(link, debug):
         elif ch in CHAR_MAP:
             usage_id, shift = CHAR_MAP[ch]
         else:
-            if debug:
-                print(f"[paste] skipping unsupported character {ch!r}")
+            _debug_print(log_buffer, debug, f"[paste] skipping unsupported character {ch!r}")
             continue
 
         if shift:
@@ -1269,7 +1292,9 @@ def main():
                               "cards fall back to a more heavily compressed mode at higher resolutions "
                               "unless a specific format is requested")
     parser.add_argument("--baud", type=int, default=115200)
-    parser.add_argument("--debug", action="store_true", help="print each key/mouse event to the terminal")
+    parser.add_argument("--debug", action="store_true",
+                         help="also print each key/mouse event to a real console/terminal -- the "
+                              "Debug Log window (Debug menu) always shows this regardless of this flag")
     args = parser.parse_args()
 
     capture_index = args.capture_index
@@ -1348,10 +1373,10 @@ def main():
     running = True
 
     def do_macro(usage_ids, label):
-        send_macro(link, usage_ids, args.debug, label)
+        send_macro(link, usage_ids, args.debug, label, log_buffer)
 
     def do_paste():
-        send_clipboard_text(link, args.debug)
+        send_clipboard_text(link, args.debug, log_buffer)
 
     def do_quit():
         nonlocal running
@@ -1621,9 +1646,9 @@ def main():
             terminal.feed(payload)
         elif frame_type == p.SHELL_CLOSED:
             terminal.notify_closed()
-        if args.debug and frame_type not in (p.ISO_LIST, p.ISO_MOUNTED, p.ISO_EJECTED, p.AP_STATUS, p.ERROR,
-                                              p.SHELL_OUTPUT, p.SHELL_CLOSED):
-            print(f"[from pi] type=0x{frame_type:02X} payload={payload!r}")
+        if frame_type not in (p.ISO_LIST, p.ISO_MOUNTED, p.ISO_EJECTED, p.AP_STATUS, p.ERROR,
+                               p.SHELL_OUTPUT, p.SHELL_CLOSED):
+            _debug_print(log_buffer, args.debug, f"[from pi] type=0x{frame_type:02X} payload={payload!r}")
 
     # Track which pygame keys are currently "down" and what usage ID was
     # sent, so KEYUP releases the correct code.
@@ -1686,17 +1711,18 @@ def main():
                 if usage_id is not None:
                     active_keys[event.key] = usage_id
                     link.send_key(True, usage_id)
-                    if args.debug:
-                        print(f"[KEYDOWN] usage=0x{usage_id:02X} ({describe_usage(usage_id)})")
-                elif args.debug:
-                    print(f"[KEYDOWN] unmapped pygame key={pygame.key.name(event.key)!r}, no usage sent")
+                    _debug_print(log_buffer, args.debug,
+                                 f"[KEYDOWN] usage=0x{usage_id:02X} ({describe_usage(usage_id)})")
+                else:
+                    _debug_print(log_buffer, args.debug,
+                                 f"[KEYDOWN] unmapped pygame key={pygame.key.name(event.key)!r}, no usage sent")
 
             elif event.type == pygame.KEYUP:
                 usage_id = active_keys.pop(event.key, None)
                 if usage_id is not None:
                     link.send_key(False, usage_id)
-                    if args.debug:
-                        print(f"[KEYUP]   usage=0x{usage_id:02X} ({describe_usage(usage_id)})")
+                    _debug_print(log_buffer, args.debug,
+                                 f"[KEYUP]   usage=0x{usage_id:02X} ({describe_usage(usage_id)})")
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 # Try the menu bar first for left-clicks -- it knows its own
@@ -1728,8 +1754,8 @@ def main():
                         # two independently-timed reports.
                         held_target_buttons |= button
                         link.send_mouse_state(*frac, held_target_buttons)
-                        if args.debug:
-                            print(f"[MOUSE DOWN] button={button} at ({frac[0]:.3f}, {frac[1]:.3f})")
+                        _debug_print(log_buffer, args.debug,
+                                     f"[MOUSE DOWN] button={button} at ({frac[0]:.3f}, {frac[1]:.3f})")
 
             elif event.type == pygame.MOUSEBUTTONUP:
                 button = {1: protocol.MOUSE_LEFT, 2: protocol.MOUSE_MIDDLE, 3: protocol.MOUSE_RIGHT}.get(event.button)
@@ -1742,8 +1768,7 @@ def main():
                     frac = map_click_to_target(event.pos, video_rect)
                     if frac is not None:
                         link.send_mouse_state(*frac, held_target_buttons)
-                        if args.debug:
-                            print(f"[MOUSE UP]   button={button}")
+                        _debug_print(log_buffer, args.debug, f"[MOUSE UP]   button={button}")
 
             elif event.type == pygame.MOUSEMOTION:
                 # No hover on a touchscreen -- only forward motion while
@@ -1752,8 +1777,7 @@ def main():
                     frac = map_click_to_target(event.pos, video_rect)
                     if frac is not None:
                         link.send_mouse_state(*frac, held_target_buttons)
-                        if args.debug:
-                            print(f"[MOUSE DRAG] at ({frac[0]:.3f}, {frac[1]:.3f})")
+                        _debug_print(log_buffer, args.debug, f"[MOUSE DRAG] at ({frac[0]:.3f}, {frac[1]:.3f})")
 
             elif event.type == pygame.MOUSEWHEEL:
                 pos = pygame.mouse.get_pos()
@@ -1762,8 +1786,7 @@ def main():
                     if frac is not None:
                         link.send_mouse_state(*frac, held_target_buttons)
                     link.send_mouse_scroll(event.y)
-                    if args.debug:
-                        print(f"[MOUSE SCROLL] amount={event.y}")
+                    _debug_print(log_buffer, args.debug, f"[MOUSE SCROLL] amount={event.y}")
 
         clock.tick(60)
 
